@@ -38,6 +38,21 @@ const seedUser = async (roleId) => {
   });
 };
 
+const categories = [
+  { name: 'Appetizers' },
+  { name: 'Main Courses' },
+  { name: 'Desserts' },
+  { name: 'Drinks' },
+  { name: 'Sides' },
+];
+
+async function seedCategories() {
+for (const category of categories) {
+  await prisma.category.create({
+    data: category,
+  });
+}
+}
 async function seedPermissions() {
   const createdPermissions = [];
   const permissionsFilePath = path.resolve(__dirname, 'permissions.json');
@@ -77,6 +92,7 @@ async function main() {
     await seedUser(createdRoles[0].id);
     // const createdPermissions = await seedPermissions()
     // await seedRolePermissions(createdRoles[0].id, createdPermissions)
+    await seedCategories()
     console.log("Seeded successfully.");
   } catch (error) {
     console.error("Error while seeding:", error);

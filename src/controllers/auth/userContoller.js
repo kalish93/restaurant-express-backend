@@ -190,7 +190,7 @@ async function login(req, res) {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { role: true },
+      include: { role: true, restaurant: true },
     });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -219,6 +219,8 @@ async function login(req, res) {
       email: user.email,
       roleId: user.role.id,
       permissions: permissionNames,
+      restaurantId: user.restaurant.id
+
     });
 
     const refreshToken = jwtUtils.generateRefreshToken({

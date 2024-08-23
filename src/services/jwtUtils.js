@@ -6,7 +6,8 @@ function generateToken(user) {
     id: user.id,
     email: user.email,
     roleId: user.roleId,
-    permissions: user.permissions
+    permissions: user.permissions,
+    restaurantId: user.restaurantId
   };
 
   const options = {
@@ -21,7 +22,8 @@ function generateRefreshToken(user) {
     id: user.id,
     email: user.email,
     roleId: user.roleId,
-    permissions: user.permissions
+    permissions: user.permissions,
+    restaurantId: user.restaurantId
   };
 
   const options = {

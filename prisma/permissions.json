@@ -14,5 +14,8 @@
   { "name": "GetRestaurants" },
   { "name": "CreateRestaurant" },
   { "name": "GetRestaurant" },
-  { "name": "AddRestaurantStaff" }
+  { "name": "AddRestaurantStaff" },
+  { "name": "CreateStock" },
+  { "name": "GetStock" }
+
 ]

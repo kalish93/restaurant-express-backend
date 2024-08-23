@@ -10,17 +10,17 @@ datasource db {
 
 // Existing User and Role Models
 model User {
-  id          String    @id @default(uuid()) @db.Uuid
-  firstName   String
-  lastName    String
-  email       String    @unique
-  password    String
-  roleId      String    @map("role_id") @db.Uuid
-  role        Role      @relation(fields: [roleId], references: [id])
-  restaurant  Restaurant? @relation(fields: [restaurantId], references: [id])
-  restaurantId String?   @map("restaurant_id") @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id           String      @id @default(uuid()) @db.Uuid
+  firstName    String
+  lastName     String
+  email        String      @unique
+  password     String
+  roleId       String      @map("role_id") @db.Uuid
+  role         Role        @relation(fields: [roleId], references: [id])
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  restaurantId String?     @map("restaurant_id") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
 }
 
 model Role {
@@ -53,90 +53,124 @@ model RolePermission {
 
 // New Models
 model Restaurant {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String
-  qrCodes   QRCode[]
-  menuItems MenuItem[]
-  orders    Order[]
-  users     User[] // Users associated with this restaurant
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id         String     @id @default(uuid()) @db.Uuid
+  name       String
+  qrCodes    QRCode[]
+  menuItems  MenuItem[]
+  stock  Stock[]
+  orders     Order[]
+  users      User[]     // Users associated with this restaurant
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 }
 
 model QRCode {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
-  tableNumber String?   
-  restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String     @id @default(uuid()) @db.Uuid
+  code         String     @unique
+  tableNumber  String?   
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 }
 
 model MenuItem {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  price       Float
-  stock       Int
-  restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  orderItems  OrderItem[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String
+  price        Float
+  stock        Int
+  isDrink      Boolean    @default(false) // Indicates if the item is a drink
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  category     Category   @relation(fields: [categoryId], references: [id])
+  categoryId   String     @map("category_id") @db.Uuid
+  orderItems   OrderItem[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 }
 
 model Order {
-  id          String    @id @default(uuid()) @db.Uuid
-  tableNumber String
-  status      OrderStatus
-  items       OrderItem[]
-  restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  bills       Bill[]    // Changed to one-to-many relationship
+  id           String        @id @default(uuid()) @db.Uuid
+  tableNumber  String
+  status       OrderStatus
+  items        OrderItem[]
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
+  restaurantId String        @map("restaurant_id") @db.Uuid
+  bills        Bill[]        // Changed to one-to-many relationship
   kitchenOrders KitchenOrder[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  barOrders    BarOrder[]    // Added BarOrders relation
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 }
 
 model OrderItem {
-  id        String   @id @default(uuid()) @db.Uuid
-  quantity  Int
-  menuItem  MenuItem @relation(fields: [menuItemId], references: [id])
-  menuItemId String   @map("menu_item_id") @db.Uuid
-  order     Order   @relation(fields: [orderId], references: [id])
-  orderId   String   @map("order_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String     @id @default(uuid()) @db.Uuid
+  quantity     Int
+  menuItem     MenuItem   @relation(fields: [menuItemId], references: [id])
+  menuItemId   String     @map("menu_item_id") @db.Uuid
+  order        Order      @relation(fields: [orderId], references: [id])
+  orderId      String     @map("order_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 }
 
 model Bill {
-  id         String   @id @default(uuid()) @db.Uuid
-  total      Float
-  order      Order   @relation(fields: [orderId], references: [id])
-  orderId    String   @map("order_id") @db.Uuid
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  total       Float
+  order       Order   @relation(fields: [orderId], references: [id])
+  orderId     String   @map("order_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 }
 
 model KitchenOrder {
   id          String    @id @default(uuid()) @db.Uuid
+  order       Order     @relation(fields: [orderId], references: [id])
+  orderId     String    @map("order_id") @db.Uuid
+  status      OrderStatus
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+}
+
+model BarOrder {
+  id          String    @id @default(uuid()) @db.Uuid
+  quantity    Int       // Quantity ordered
+  stock       Stock     @relation(fields: [stockId], references: [id])
+  stockId     String    @map("stock_id") @db.Uuid
+  status      OrderStatus
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
   order       Order    @relation(fields: [orderId], references: [id])
   orderId     String   @map("order_id") @db.Uuid
-  status      KitchenOrderStatus
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
 }
 
-// Enums
+
+// Updated Category Model (No direct association with Restaurant)
+model Category {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String
+  menuItems    MenuItem[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+}
+
+model Stock {
+  id          String    @id @default(uuid()) @db.Uuid
+  drinkName   String
+  quantity    Int       // Quantity available in stock
+  price       Float     // Price per unit
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  image       String?
+  barOrders   BarOrder[]
+  restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String   @map("restaurant_id") @db.Uuid
+}
+
+// Consolidated OrderStatus Enum
 enum OrderStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum KitchenOrderStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
