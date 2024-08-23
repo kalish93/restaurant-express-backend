@@ -59,6 +59,7 @@ model Restaurant {
   menuItems MenuItem[]
   orders    Order[]
   users     User[] // Users associated with this restaurant
+  isActive  Boolean   @default(true)
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 }

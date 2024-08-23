@@ -10,5 +10,9 @@
   { "name": "DeleteRole" },
   { "name": "GetRolePermissions" },
   { "name": "GetPermissions" },
-  { "name": "AssignRevokePermissions" }
+  { "name": "AssignRevokePermissions" },
+  { "name": "GetRestaurants" },
+  { "name": "CreateRestaurant" },
+  { "name": "GetRestaurant" },
+  { "name": "AddRestaurantStaff" }
 ]
