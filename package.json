@@ -1,0 +1,31 @@
+{
+  "name": "f.o.r-automisation",
+  "version": "1.0.0",
+  "description": "F.O.R automisation back-end",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.2",
+    "express": "^4.18.2",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "path": "^0.12.7",
+    "pdf-merger-js": "^5.1.1",
+    "pdfkit": "^0.15.0",
+    "postgresql": "^0.0.1",
+    "prisma": "^5.9.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^5.11.0",
+    "nodemon": "^3.0.3"
+  }
+}

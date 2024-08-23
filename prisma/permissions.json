@@ -1,0 +1,14 @@
+[
+  { "name": "CreateUser" },
+  { "name": "UpdateUser" },
+  { "name": "DeleteUser" },
+  { "name": "GetUsers" },
+  { "name": "GetUser" },
+  { "name": "GetRoles" },
+  { "name": "CreateRole" },
+  { "name": "UpdateRole" },
+  { "name": "DeleteRole" },
+  { "name": "GetRolePermissions" },
+  { "name": "GetPermissions" },
+  { "name": "AssignRevokePermissions" }
+]
