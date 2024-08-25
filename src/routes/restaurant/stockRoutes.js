@@ -11,7 +11,6 @@ router.post('/stocks', upload.single('image'),  (req, res) => {
     
   req.requiredPermissions = ['CreateStock'];
   authenticate(req, res, () => stockController.createStock(req, res));
-  console.log(req.body,'ooooooooooooo')
 
 });
 
