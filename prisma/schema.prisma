@@ -8,7 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Existing User and Role Models
+// Existing User, Role, Permission, RolePermission, Restaurant, QRCode, MenuItem, Order, OrderItem, Bill, KitchenOrder, BarOrder, Category, and Stock Models
+
 model User {
   id           String      @id @default(uuid()) @db.Uuid
   firstName    String
@@ -52,29 +53,19 @@ model RolePermission {
 }
 
 // New Models
+
 model Restaurant {
   id         String     @id @default(uuid()) @db.Uuid
   name       String
-  qrCodes    QRCode[]
   menuItems  MenuItem[]
-  stock  Stock[]
+  stock      Stock[]
   orders     Order[]
+  tables     Table[]    // Relation to Table model
   users      User[]     // Users associated with this restaurant
   isActive   Boolean    @default(true)
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
 }
-
-model QRCode {
-  id           String     @id @default(uuid()) @db.Uuid
-  code         String     @unique
-  tableNumber  String?   
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
-  restaurantId String     @map("restaurant_id") @db.Uuid
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-}
-
 model MenuItem {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -99,6 +90,8 @@ model Order {
   bills        Bill[]        // Changed to one-to-many relationship
   kitchenOrders KitchenOrder[]
   barOrders    BarOrder[]    // Added BarOrders relation
+  table        Table         @relation(fields: [tableId], references: [id]) // Relation to Table
+  tableId      String        @map("table_id") @db.Uuid
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 }
@@ -145,6 +138,17 @@ model BarOrder {
   orderId     String   @map("order_id") @db.Uuid
 }
 
+model Table {
+  id           String     @id @default(uuid()) @db.Uuid
+  number       String     // Unique identifier for the table, like "Table 1"
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  qrCodeImage  String     // Base64 or URL of the QR code image
+  orders       Order[]    // One-to-many relation to orders
+  status       TableStatus @default(AVAILABLE) // Status of the table
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+}
 
 // Updated Category Model (No direct association with Restaurant)
 model Category {
@@ -174,4 +178,10 @@ enum OrderStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
 }

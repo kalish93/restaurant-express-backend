@@ -5,8 +5,10 @@ const restaurantRoutes = require("./routes/restaurant/restaurantRoutes");
 const stockRoutes = require("./routes/restaurant/stockRoutes");
 const menuRoutes = require("./routes/restaurant/menuRoutes");
 const categoryRoutes = require("./routes/restaurant/categoryRoutes");
+const tableRoutes = require("./routes/restaurant/tableRoutes");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
+require('dotenv').config();
 const cors = require("cors");
 const app = express();
 app.use(cors());
@@ -35,6 +37,7 @@ app.use("/api", restaurantRoutes);
 app.use("/api", stockRoutes);
 app.use("/api", menuRoutes);
 app.use("/api", categoryRoutes);
+app.use("/api", tableRoutes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 module.exports = app;

@@ -12,7 +12,7 @@ async function getRestaurants(req, res) {
         select: {
             id: true,
             name : true,
-            qrCodes : true, 
+            tables : true, 
             menuItems: true,
             orders : true,
             users : true,
@@ -70,7 +70,7 @@ async function getRestaurant(req, res) {
           select: {
               id: true,
               name : true,
-              qrCodes : true, 
+              tables : true, 
               menuItems: true,
               orders : true,
               users: {
