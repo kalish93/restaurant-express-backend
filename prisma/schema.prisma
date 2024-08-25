@@ -79,8 +79,7 @@ model MenuItem {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
   price        Float
-  stock        Int
-  isDrink      Boolean    @default(false) // Indicates if the item is a drink
+  ingredients   String?
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String     @map("restaurant_id") @db.Uuid
   category     Category   @relation(fields: [categoryId], references: [id])

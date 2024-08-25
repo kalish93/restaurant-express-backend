@@ -16,6 +16,11 @@
   { "name": "GetRestaurant" },
   { "name": "AddRestaurantStaff" },
   { "name": "CreateStock" },
-  { "name": "GetStock" }
-
+  { "name": "GetStock" },
+  { "name": "GetCategories" },
+  { "name": "GetMenus" },
+  { "name": "CreateMenu" },
+  { "name": "GetMenu" },
+  { "name": "DeleteMenu" },
+  { "name": "UpdateMenu" }
 ]
