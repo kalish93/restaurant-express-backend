@@ -19,5 +19,12 @@
   { "name": "GetStock" },
   { "name": "CreateTable" },
   { "name": "GetTables" },
-  { "name": "DowloadQrCode" }
+  { "name": "DowloadQrCode" },
+  { "name": "GetStock" },
+  { "name": "GetCategories" },
+  { "name": "GetMenus" },
+  { "name": "CreateMenu" },
+  { "name": "GetMenu" },
+  { "name": "DeleteMenu" },
+  { "name": "UpdateMenu" }
 ]
