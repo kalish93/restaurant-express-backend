@@ -28,5 +28,9 @@
   { "name": "DeleteMenu" },
   { "name": "UpdateMenu" },
   { "name": "DeleteRestaurant" },
-  { "name": "UpdateRestaurant" }
+  { "name": "UpdateRestaurant" },
+  { "name": "UpdateStock" },
+  { "name": "DeleteStock" },
+  { "name": "UpdateTable" },
+  { "name": "DeleteTable" }
 ]

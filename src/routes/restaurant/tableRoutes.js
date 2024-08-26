@@ -22,4 +22,14 @@ router.get('/tables/:id/download-qr', (req, res) => {
     req.requiredPermissions = ['DowloadQrCode'];
     authenticate(req, res, () => tableController.downloadQrCode(req, res));
 });
+
+router.put('/tables/:id', (req, res) => {
+    req.requiredPermissions = ['UpdateTable'];
+    authenticate(req, res, () => tableController.updateTable(req, res));
+});
+
+router.delete('/tables/:id', (req, res) => {
+    req.requiredPermissions = ['DeleteTable'];
+    authenticate(req, res, () => tableController.deleteTable(req, res));
+});
 module.exports = router;

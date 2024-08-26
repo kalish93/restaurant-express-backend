@@ -19,4 +19,16 @@ router.get('/stocks', (req, res) => {
   authenticate(req, res, () => stockController.getStocks(req, res));
 });
 
+router.put('/stocks/:id', upload.single('image'),  (req, res) => {
+  req.requiredPermissions = ['UpdateStock'];
+  authenticate(req, res, () => stockController.updateStock(req, res));
+
+});
+
+router.delete('/stocks/:id', (req, res) => {
+  req.requiredPermissions = ['DeleteStock'];
+  authenticate(req, res, () => stockController.deleteStock(req, res));
+
+});
+
 module.exports = router;

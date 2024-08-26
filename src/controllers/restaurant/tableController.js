@@ -97,8 +97,74 @@ const downloadQrCode = async (req, res) => {
   }
 };
 
+const updateTable = async (req, res) => {
+  const tableId = req.params.id;
+  const { number } = req.body;
+
+  try {
+    // Check if the table exists
+    const existingTable = await prisma.table.findUnique({
+      where: {
+        id: tableId,
+      },
+    });
+
+    if (!existingTable) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+
+    // Update the table
+    const updatedTable = await prisma.table.update({
+      where: {
+        id: tableId,
+      },
+      data: {
+        number: number ? number.toString() : existingTable.number,
+        // Optionally update QR code image if needed
+        // qrCodeImage: qrCodeImage, // If you want to update QR code image
+      },
+    });
+
+    res.status(200).json(updatedTable);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to update table" });
+  }
+};
+
+const deleteTable = async (req, res) => {
+  const tableId = req.params.id;
+
+  try {
+    // Check if the table exists
+    const existingTable = await prisma.table.findUnique({
+      where: {
+        id: tableId,
+      },
+    });
+
+    if (!existingTable) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+
+    // Delete the table
+    await prisma.table.delete({
+      where: {
+        id: tableId,
+      },
+    });
+
+    res.status(200).json({ message: "Table deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to delete table" });
+  }
+};
+
 module.exports = {
   createTableWithQRCode,
   getTablesByRestaurantId,
   downloadQrCode,
+  updateTable,
+  deleteTable
 };

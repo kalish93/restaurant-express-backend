@@ -31,7 +31,7 @@ router.delete('/restaurants/:id', (req, res) => {
   authenticate(req, res, () => restaurantController.deleteRestaurant(req, res));
 });
 
-router.delete('/restaurants/:id', (req, res) => {
+router.put('/restaurants/:id', (req, res) => {
   req.requiredPermissions = ['UpdateRestaurant'];
   authenticate(req, res, () => restaurantController.updateRestaurant(req, res));
 });
