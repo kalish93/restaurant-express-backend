@@ -26,4 +26,14 @@ router.post('/restaurants/staff', (req, res) => {
   authenticate(req, res, () => restaurantController.addRestaurantStaff(req, res));
 });
 
+router.delete('/restaurants/:id', (req, res) => {
+  req.requiredPermissions = ['DeleteRestaurant'];
+  authenticate(req, res, () => restaurantController.deleteRestaurant(req, res));
+});
+
+router.delete('/restaurants/:id', (req, res) => {
+  req.requiredPermissions = ['UpdateRestaurant'];
+  authenticate(req, res, () => restaurantController.updateRestaurant(req, res));
+});
+
 module.exports = router;

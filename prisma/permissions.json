@@ -19,5 +19,7 @@
   { "name": "GetStock" },
   { "name": "CreateTable" },
   { "name": "GetTables" },
-  { "name": "DowloadQrCode" }
+  { "name": "DowloadQrCode" },
+  { "name": "DeleteRestaurant" },
+  { "name": "UpdateRestaurant" }
 ]

@@ -139,9 +139,66 @@ async function addRestaurantStaff(req, res) {
     }
   }  
 
+  async function deleteRestaurant(req, res) {
+    try {
+      const id = req.params.id;
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: id },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const deleted = await prisma.restaurant.delete({
+        where: { id: id },
+      });
+  
+      res.status(200).json(deleted);
+    } catch (error) {
+      console.error("Error deleting restaurant:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+
+  async function updateRestaurant(req, res) {
+    try {
+      const id = req.params.id;
+      const { name, isActive } = req.body;
+  
+      if (!name) {
+        return res.status(400).json({ error: "Name is required" });
+      }
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: id },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const updatedRestaurant = await prisma.restaurant.update({
+        where: { id: id },
+        data: {
+          name: name,
+          isActive: isActive !== undefined ? isActive : restaurant.isActive,
+        },
+      });
+  
+      res.json(updatedRestaurant);
+    } catch (error) {
+      console.error("Error updating restaurant:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+  
 module.exports = {
     getRestaurants,
     createRestaurant,
     getRestaurant,
-    addRestaurantStaff
+    addRestaurantStaff,
+    deleteRestaurant,
+    updateRestaurant, 
 }
