@@ -4,30 +4,21 @@ const bcrypt = require('bcrypt');
 async function getMenus(req, res) {
   try {
     const { pageNumber = 1, pageSize = 10 } = req.query;
-    let totalCount;
-
-      totalCount = await prisma.menuItem.count();
      const menuItems = await prisma.menuItem.findMany({
         select: {
           id : true,
           name : true,
           price : true,
           restaurantId : true,
+          ingredients:true,
           category : true,
           categoryId : true,
         },
-        skip: (pageNumber - 1) * parseInt(pageSize, 10),
-        take: parseInt(pageSize, 10),
+       
       });
 
-      const totalPages = Math.ceil(totalCount / parseInt(pageSize, 10));
-
     res.json({
-      items: menuItems,
-      totalCount: totalCount,
-      pageSize: parseInt(pageSize, 10),
-      currentPage: parseInt(pageNumber, 10),
-      totalPages: totalPages,
+       menuItems,
     });
   } catch (error) {
     console.error("Error retrieving menus:", error);
@@ -37,7 +28,7 @@ async function getMenus(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, stock, ingredients ,description, restaurantId, categoryId} = req.body;
+    const { name, price, ingredients , restaurantId, categoryId} = req.body;
     const image = req.file ? req.file.filename : null; 
     if(!ingredients || ingredients.length === 0){
       return res.status(400).json({ error: "Invalid list of Ingredients" });
@@ -65,15 +56,12 @@ async function createMenu(req, res) {
         data: {
           name: name,
           price: parseFloat(price),
-          stock: parseInt(stock),
           category,
           ingredients,
-          description,
           restaurant,
+          image
         },
       });
-  
-
     res.json(menu);
   } catch (error) {
     console.error("Error creating menuItem:", error);

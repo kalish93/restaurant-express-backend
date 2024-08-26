@@ -3,7 +3,6 @@ const bcrypt = require('bcrypt');
 
 async function getCategories(req, res) {
   try {
-    console.log("inside controller")
      const categories = await prisma.category.findMany({
         select: {
           id : true,
