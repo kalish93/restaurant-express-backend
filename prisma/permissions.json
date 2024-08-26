@@ -20,6 +20,13 @@
   { "name": "CreateTable" },
   { "name": "GetTables" },
   { "name": "DowloadQrCode" },
+  { "name": "GetStock" },
+  { "name": "GetCategories" },
+  { "name": "GetMenus" },
+  { "name": "CreateMenu" },
+  { "name": "GetMenu" },
+  { "name": "DeleteMenu" },
+  { "name": "UpdateMenu" },
   { "name": "DeleteRestaurant" },
   { "name": "UpdateRestaurant" }
 ]

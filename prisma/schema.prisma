@@ -70,7 +70,8 @@ model MenuItem {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
   price        Float
-  stock        Int
+  ingredients  String?
+  image        String?
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String     @map("restaurant_id") @db.Uuid
   category     Category   @relation(fields: [categoryId], references: [id])
