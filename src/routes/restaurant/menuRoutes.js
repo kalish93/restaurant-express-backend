@@ -23,12 +23,12 @@ router.get('/menus/:id', (req, res) => {
   authenticate(req, res, () => menuController.getMenu(req, res));
 });
 
-router.delete('/menus', (req, res) => {
+router.delete('/menus/:id', (req, res) => {
   req.requiredPermissions = ['DeleteMenu'];
   authenticate(req, res, () => menuController.deleteMenu(req, res));
 });
 
-router.put('/menus',(req,res)=>{
+router.put('/menus/:id', upload.single('image') , (req,res)=>{
   req.requiredPermissions = ['UpdateMenu'];
   authenticate(req,res, ()=>menuController.updateMenu(req,res));
 });
