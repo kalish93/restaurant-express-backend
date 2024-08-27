@@ -3,16 +3,23 @@ const bcrypt = require('bcrypt');
 
 async function getMenus(req, res) {
   try {
-    const { pageNumber = 1, pageSize = 10 } = req.query;
+    const restaurantId = req.user.restaurantId;
+    if(!restaurantId) {
+      return res.status(400).json({error: "user does not belong to a restaurant"})
+    }
      const menuItems = await prisma.menuItem.findMany({
+      where :{
+        restaurantId: restaurantId
+      },
         select: {
           id : true,
           name : true,
           price : true,
           restaurantId : true,
-          ingredients:true,
+          ingredient:true,
           category : true,
           categoryId : true,
+          image:true
         },
        
       });
@@ -28,25 +35,26 @@ async function getMenus(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, ingredients , restaurantId, categoryId} = req.body;
+    const { name, price, ingredients , categoryId} = req.body;
     const image = req.file ? req.file.filename : null; 
-    if(!ingredients || ingredients.length === 0){
-      return res.status(400).json({ error: "Invalid list of Ingredients" });
+    const restaurantId = req.user.restaurantId;
+    if(!restaurantId) {
+      return res.status(400).json({error: "user does not have a restaurant"})
     }
-    if (!name || !price || !stock || !description ) {
-      return res.status(400).json({ error: "Invalid request body request" });
+    if (!name || !price || !categoryId ){
+      return res.status(400).json({ error: "Invalid request body" });
     }
     const restaurant = await prisma.restaurant.findUnique({
       where:{
-        id: restaurantId??""
+        id: restaurantId
       }
     });
     if(!restaurant){
-      return res.status(400).json({ error: "Selected restaurant not found." });
+      return res.status(400).json({ error: "user's restaurant not found." });
     }
     const category = await prisma.category.findUnique({
       where:{
-        id: categoryId??"",
+        id: categoryId,
       }
     });
     if(!category){
@@ -56,10 +64,15 @@ async function createMenu(req, res) {
         data: {
           name: name,
           price: parseFloat(price),
-          category,
-          ingredients,
-          restaurant,
-          image
+          category: {
+            connect: { id: categoryId } 
+          },
+          ingredient: ingredients ?? "", 
+          restaurant: {
+            connect: { id: restaurantId } 
+          },
+          image: image,
+         
         },
       });
     res.json(menu);
@@ -81,6 +94,7 @@ async function getMenu(req, res) {
               id: true,
               name : true,
               price : true, 
+              ingredient:true,
               stock: true,
               isDrink : true,
               restaurant: {
@@ -108,27 +122,24 @@ async function getMenu(req, res) {
 
 async function updateMenu(req, res) {
     try {
-      const { id, name, price, description, ingredients , stock, isDrink, categoryId } = req.body;
-    
+      const id = req.params.id;
+      const { name, price, ingredient, categoryId } = req.body;
+      const image = req.file ? req.file.filename : null;
+
+      const restaurantId = req.user.restaurantId;
+      if(!restaurantId) res.status(400).json({error:"No restaurant found for current user."})
       if(!id){
         return res.status(400).json({error: "Invalid menuId."})
       }
   
      const data = {};
-     if(description){
-      data["description"] = description
-     }
+     data['ingredient'] = ingredient;
+      data['image'] = image;
      if(name){
       data["name"] = name;
      }
      if(price){
       data["price"] = parseFloat(price);
-     }
-     if(stock) {
-      data["stock"] = parseInt(stock);
-     }
-     if(isDrink && typeof isDrink == "boolean"){
-      data["isDrink"] = isDrink
      }
      if(categoryId){
       const category = await prisma.category.findUnique({
@@ -141,13 +152,17 @@ async function updateMenu(req, res) {
       }
       data["category"] = category;
      }
-  
+
       const updatedMenu = await prisma.menuItem.update({
         where:{
-          id: id
+          id: id,
+          restaurantId
         },
         data: data
       });
+      if(!updatedMenu) {
+        res.status(404).json({error:"Menu not found"});
+      }
   
       res.json(updatedMenu);
     } catch (error) {
@@ -158,14 +173,17 @@ async function updateMenu(req, res) {
 
 async function deleteMenu(req, res) {
     try {
-      const { id } = req.params.id;
+      const id  = req.params.id;
+      const restaurantId = req.user.restaurantId;
+      if(!restaurantId) res.status(400).json({error:"No restaurant found for current user."})
     
       if(!id){
         return res.status(400).json({error: "Invalid menu id."})
       }
      await prisma.menuItem.delete({
         where:{
-          id: id
+          id: id,
+          restaurantId
         }
       });
   
