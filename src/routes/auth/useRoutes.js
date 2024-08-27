@@ -1,5 +1,8 @@
 const express = require('express');
 const userController = require('../../controllers/auth/userContoller');
+const restaurantController = require('../../controllers/restaurant/restaurantController');
+const menuController = require('../../controllers/restaurant/menuController');
+
 const authenticate = require('../../middlewares/authenticate');
 
 const router = express.Router();
@@ -7,6 +10,8 @@ const router = express.Router();
 // Public routes
 router.post('/login', userController.login);
 router.post('/refresh', userController.refreshToken);
+router.get('/restaurants/:id',  restaurantController.getRestaurant);
+router.get('/menus/:restaurantId',  menuController.getMenuByRestaurantId);
 
 // Routes that require authentication
 router.use(authenticate);

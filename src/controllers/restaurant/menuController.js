@@ -1,5 +1,6 @@
 const prisma = require('../../database');
-const bcrypt = require('bcrypt');
+const path = require('path');
+const fs = require('fs');
 
 async function getMenus(req, res) {
   try {
@@ -16,17 +17,47 @@ async function getMenus(req, res) {
           name : true,
           price : true,
           restaurantId : true,
-          ingredient:true,
+          ingredients:true,
           category : true,
           categoryId : true,
-          image:true
+          image:true,
+          destination: true,
+          stock: true,
         },
        
       });
 
-    res.json({
-       menuItems,
-    });
+    res.json(menuItems);
+  } catch (error) {
+    console.error("Error retrieving menus:", error);
+    res.status(500).send("Internal Server Error");
+  }
+}
+
+async function getMenuByRestaurantId(req, res) {
+  try {
+    const restaurantId = req.params.restaurantId;
+
+     const menuItems = await prisma.menuItem.findMany({
+      where :{
+        restaurantId: restaurantId
+      },
+        select: {
+          id : true,
+          name : true,
+          price : true,
+          restaurantId : true,
+          ingredients:true,
+          category : true,
+          categoryId : true,
+          image:true,
+          destination: true,
+          stock: true,
+        },
+       
+      });
+
+    res.json(menuItems);
   } catch (error) {
     console.error("Error retrieving menus:", error);
     res.status(500).send("Internal Server Error");
@@ -35,7 +66,7 @@ async function getMenus(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, ingredients , categoryId} = req.body;
+    const { name, price, ingredients , categoryId, stockId, destination} = req.body;
     const image = req.file ? req.file.filename : null; 
     const restaurantId = req.user.restaurantId;
     if(!restaurantId) {
@@ -60,21 +91,26 @@ async function createMenu(req, res) {
     if(!category){
       return res.status(400).json({ error: "Invalid menu category." });
     }
-     const menu = await prisma.menuItem.create({
-        data: {
-          name: name,
-          price: parseFloat(price),
-          category: {
-            connect: { id: categoryId } 
-          },
-          ingredient: ingredients ?? "", 
-          restaurant: {
-            connect: { id: restaurantId } 
-          },
-          image: image,
-         
+    const menu = await prisma.menuItem.create({
+      data: {
+        name: name,
+        price: parseFloat(price),
+        category: {
+          connect: { id: categoryId },
         },
-      });
+        ingredients: ingredients ?? "", 
+        restaurant: {
+          connect: { id: restaurantId },
+        },
+        image: image,
+        ...(stockId && {
+          stock: {
+            connect: { id: stockId },
+          },
+        }),
+        destination: destination,
+      },
+    });
     res.json(menu);
   } catch (error) {
     console.error("Error creating menuItem:", error);
@@ -123,17 +159,27 @@ async function getMenu(req, res) {
 async function updateMenu(req, res) {
     try {
       const id = req.params.id;
-      const { name, price, ingredient, categoryId } = req.body;
+      const { name, price, ingredients , categoryId, destination} = req.body;
       const image = req.file ? req.file.filename : null;
 
       const restaurantId = req.user.restaurantId;
-      if(!restaurantId) res.status(400).json({error:"No restaurant found for current user."})
-      if(!id){
-        return res.status(400).json({error: "Invalid menuId."})
+      const existingMenu = await prisma.menuItem.findUnique({
+        where: { id: id },
+      });
+  
+      if (!existingMenu) {
+        return res.status(404).send("Menu not found");
       }
   
+      if (image && existingMenu.image) {
+        const oldImagePath = path.join(__dirname, '../../public/uploads', existingMenu.image);
+        fs.unlink(oldImagePath, (err) => {
+          if (err) console.error("Error deleting old image:", err);
+        });
+      }
+
      const data = {};
-     data['ingredient'] = ingredient;
+     data['ingredients'] = ingredients;
       data['image'] = image;
      if(name){
       data["name"] = name;
@@ -158,8 +204,21 @@ async function updateMenu(req, res) {
           id: id,
           restaurantId
         },
-        data: data
+        data: {
+          name: name,
+          price: parseFloat(price),
+          category: {
+            connect: { id: categoryId },
+          },
+          ingredients: ingredients ?? "", 
+          restaurant: {
+            connect: { id: restaurantId },
+          },
+          image: image || existingMenu.image,
+          destination: destination
+        }
       });
+
       if(!updatedMenu) {
         res.status(404).json({error:"Menu not found"});
       }
@@ -175,19 +234,29 @@ async function deleteMenu(req, res) {
     try {
       const id  = req.params.id;
       const restaurantId = req.user.restaurantId;
-      if(!restaurantId) res.status(400).json({error:"No restaurant found for current user."})
-    
-      if(!id){
-        return res.status(400).json({error: "Invalid menu id."})
+
+      const existingMenu = await prisma.menuItem.findUnique({
+        where: { id: id },
+      });
+  
+      if (!existingMenu) {
+        return res.status(404).send("Stock not found");
       }
-     await prisma.menuItem.delete({
+
+      if (existingMenu.image) {
+        const imagePath = path.join(__dirname, '../../public/uploads/', existingMenu.image);
+        fs.unlink(imagePath, (err) => {
+          if (err) console.error("Error deleting image:", err);
+        });
+      }
+     const deleted = await prisma.menuItem.delete({
         where:{
           id: id,
           restaurantId
         }
       });
   
-      res.json({message: "sucessfully deleted menu item."});
+      res.json(deleted);
     } catch (error) {
       console.error("Error creating menu:", error);
       res.status(500).send("Internal Server Error");
@@ -199,5 +268,6 @@ module.exports = {
     updateMenu,
     getMenu,
     createMenu,
-    getMenus
+    getMenus,
+    getMenuByRestaurantId
 }

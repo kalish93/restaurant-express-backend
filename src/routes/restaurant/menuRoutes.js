@@ -3,8 +3,9 @@ const menuController = require('../../controllers/restaurant/menuController');
 const authenticate = require('../../middlewares/authenticate');
 const upload = require('../../middlewares/multerConfig');
 
-
 const router = express.Router();
+
+router.get('/menus/:restaurantId',  menuController.getMenuByRestaurantId);
 
 router.use(authenticate);
 

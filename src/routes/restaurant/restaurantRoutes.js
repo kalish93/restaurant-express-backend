@@ -4,6 +4,11 @@ const authenticate = require('../../middlewares/authenticate');
 
 const router = express.Router();
 
+// Public routes
+
+router.get('/restaurants/:id',  restaurantController.getRestaurant);
+
+
 router.use(authenticate);
 
 router.get('/restaurants', (req, res) => {
@@ -14,11 +19,6 @@ router.get('/restaurants', (req, res) => {
 router.post('/restaurants', (req, res) => {
   req.requiredPermissions = ['CreateRestaurant'];
   authenticate(req, res, () => restaurantController.createRestaurant(req, res));
-});
-
-router.get('/restaurants/:id', (req, res) => {
-  req.requiredPermissions = ['GetRestaurant'];
-  authenticate(req, res, () => restaurantController.getRestaurant(req, res));
 });
 
 router.post('/restaurants/staff', (req, res) => {

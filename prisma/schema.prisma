@@ -70,13 +70,16 @@ model MenuItem {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
   price        Float
-  ingredient  String?
+  ingredients  String?
   image        String?
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String     @map("restaurant_id") @db.Uuid
   category     Category   @relation(fields: [categoryId], references: [id])
   categoryId   String     @map("category_id") @db.Uuid
+  stock     Stock?   @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  stockId   String?     @map("stock_id") @db.Uuid
   orderItems   OrderItem[]
+  destination  DestinationType @default(KITCHEN) // Specify where to send the item
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 }
@@ -162,15 +165,15 @@ model Category {
 
 model Stock {
   id          String    @id @default(uuid()) @db.Uuid
-  drinkName   String
+  name   String
   quantity    Int       // Quantity available in stock
-  price       Float     // Price per unit
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   image       String?
   barOrders   BarOrder[]
   restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String   @map("restaurant_id") @db.Uuid
+  MenuItem MenuItem[]
 }
 
 // Consolidated OrderStatus Enum
@@ -185,4 +188,9 @@ enum TableStatus {
   AVAILABLE
   OCCUPIED
   RESERVED
+}
+
+enum DestinationType {
+  KITCHEN
+  BAR
 }

@@ -5,28 +5,54 @@ const path = require('path');
 async function getStocks(req, res) {
   try {
     const restaurantId = req.user.restaurantId;
-    const { pageNumber = 1, pageSize = 10 } = req.query;
+    const { pageNumber, pageSize } = req.query;
+
+    let stocks;
     let totalCount;
 
-    totalCount = await prisma.stock.count();
-
-    const stocks = await prisma.stock.findMany({
+    totalCount = await prisma.stock.count({
       where: {
         restaurantId: restaurantId,
       },
-      skip: (pageNumber - 1) * parseInt(pageSize, 10),
-      take: parseInt(pageSize, 10),
     });
 
-    const totalPages = Math.ceil(totalCount / parseInt(pageSize, 10));
+    if (pageNumber && pageSize) {
+      // Parse pageNumber and pageSize to ensure they are numbers
+      const parsedPageNumber = parseInt(pageNumber, 10);
+      const parsedPageSize = parseInt(pageSize, 10);
 
-    res.json({
-      items: stocks,
-      totalCount: totalCount,
-      pageSize: parseInt(pageSize, 10),
-      currentPage: parseInt(pageNumber, 10),
-      totalPages: totalPages,
-    });
+      stocks = await prisma.stock.findMany({
+        where: {
+          restaurantId: restaurantId,
+        },
+        skip: (parsedPageNumber - 1) * parsedPageSize,
+        take: parsedPageSize,
+      });
+
+      const totalPages = Math.ceil(totalCount / parsedPageSize);
+
+      res.json({
+        items: stocks,
+        totalCount: totalCount,
+        pageSize: parsedPageSize,
+        currentPage: parsedPageNumber,
+        totalPages: totalPages,
+      });
+    } else {
+      stocks = await prisma.stock.findMany({
+        where: {
+          restaurantId: restaurantId,
+        },
+      });
+
+      res.json({
+        items: stocks,
+        totalCount: totalCount,
+        pageSize: totalCount, // No pagination, show all items
+        currentPage: 1,
+        totalPages: 1,
+      });
+    }
   } catch (error) {
     console.error("Error retrieving stocks:", error);
     res.status(500).send("Internal Server Error");
@@ -36,13 +62,12 @@ async function getStocks(req, res) {
 async function createStock(req, res) {
   try {
     
-    const { quantity, price, drinkName } = req.body;
+    const { quantity, name } = req.body;
     const image = req.file ? req.file.filename : null; // File path or null if no file
 // console.log(image,'ooooooooooooo')
     if (
       quantity === undefined ||
-      price === undefined ||
-      drinkName === undefined
+      name === undefined
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -50,8 +75,7 @@ async function createStock(req, res) {
 
     const stock = await prisma.stock.create({
       data: {
-        drinkName: drinkName,
-        price: parseFloat(price),
+        name: name,
         quantity: parseInt(quantity),
         restaurantId: restaurantId,
         image: image,
@@ -68,13 +92,12 @@ async function createStock(req, res) {
 async function updateStock(req, res) {
   try {
     const { id } = req.params;
-    const { quantity, price, drinkName } = req.body;
+    const { quantity, name } = req.body;
     const image = req.file ? req.file.filename : null;
 
     if (
       quantity === undefined ||
-      price === undefined ||
-      drinkName === undefined
+      name === undefined
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -99,8 +122,7 @@ async function updateStock(req, res) {
     const updatedStock = await prisma.stock.update({
       where: { id: id },
       data: {
-        drinkName: drinkName,
-        price: parseFloat(price),
+        name: name,
         quantity: parseInt(quantity),
         image: image || existingStock.image, // Keep the existing image if no new one is provided
       },
