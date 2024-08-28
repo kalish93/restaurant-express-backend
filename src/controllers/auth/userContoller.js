@@ -219,7 +219,7 @@ async function login(req, res) {
       email: user.email,
       roleId: user.role.id,
       permissions: permissionNames,
-      restaurantId: user.restaurant.id
+      restaurantId: user?.restaurantId
 
     });
 
@@ -228,6 +228,7 @@ async function login(req, res) {
       email: user.email,
       roleId: user.role.id,
       permissions: permissionNames,
+      restaurantId: user?.restaurantId
     });
 
     res.json({ accessToken, refreshToken, user });
