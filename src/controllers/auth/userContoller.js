@@ -15,10 +15,11 @@ async function getUsers(req, res) {
       users = await prisma.user.findMany({
         select: {
           id: true,
-          userName: true,
+          email: true,
           firstName: true,
           lastName: true,
           roleId: true,
+          restaurant: true,
           role: {
             select: {
               id: true,
@@ -33,8 +34,11 @@ async function getUsers(req, res) {
       users = await prisma.user.findMany({
         select: {
           id: true,
-          userName: true,
+          email: true,
+          firstName: true,
+          lastName: true,
           roleId: true,
+          restaurant: true,
           role: {
             select: {
               id: true,
