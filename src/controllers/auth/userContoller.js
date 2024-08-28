@@ -221,7 +221,7 @@ async function login(req, res) {
     const accessToken = jwtUtils.generateToken({
       id: user.id,
       email: user.email,
-      roleId: user.role.id,
+      role: user?.role,
       permissions: permissionNames,
       restaurantId: user?.restaurantId
 
@@ -230,7 +230,7 @@ async function login(req, res) {
     const refreshToken = jwtUtils.generateRefreshToken({
       id: user.id,
       email: user.email,
-      roleId: user.role.id,
+      role: user?.role,
       permissions: permissionNames,
       restaurantId: user?.restaurantId
     });

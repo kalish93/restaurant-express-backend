@@ -5,7 +5,7 @@ function generateToken(user) {
   const payload = {
     id: user.id,
     email: user.email,
-    roleId: user.roleId,
+    role: user?.role,
     permissions: user.permissions,
     restaurantId: user.restaurantId
   };
@@ -21,7 +21,7 @@ function generateRefreshToken(user) {
   const payload = {
     id: user.id,
     email: user.email,
-    roleId: user.roleId,
+    role: user?.role,
     permissions: user.permissions,
     restaurantId: user.restaurantId
   };
