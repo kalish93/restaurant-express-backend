@@ -161,10 +161,28 @@ const deleteTable = async (req, res) => {
   }
 };
 
+const getTable = async(req, res) => {
+  try {
+    const tableId = req.params.id;
+    
+    const table = await prisma.table.findUnique({
+      where: {
+        id: tableId
+      },
+    });
+
+    res.status(201).json(table);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch table" });
+  }
+}
+
 module.exports = {
   createTableWithQRCode,
   getTablesByRestaurantId,
   downloadQrCode,
   updateTable,
-  deleteTable
+  deleteTable,
+  getTable
 };

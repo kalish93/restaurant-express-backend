@@ -86,7 +86,6 @@ model MenuItem {
 
 model Order {
   id           String        @id @default(uuid()) @db.Uuid
-  tableNumber  String
   status       OrderStatus
   items        OrderItem[]
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
@@ -105,6 +104,7 @@ model OrderItem {
   quantity     Int
   menuItem     MenuItem   @relation(fields: [menuItemId], references: [id])
   menuItemId   String     @map("menu_item_id") @db.Uuid
+  specialInstructions String?
   order        Order      @relation(fields: [orderId], references: [id])
   orderId      String     @map("order_id") @db.Uuid
   createdAt    DateTime   @default(now()) @map("created_at")
@@ -132,8 +132,8 @@ model KitchenOrder {
 model BarOrder {
   id          String    @id @default(uuid()) @db.Uuid
   quantity    Int       // Quantity ordered
-  stock       Stock     @relation(fields: [stockId], references: [id])
-  stockId     String    @map("stock_id") @db.Uuid
+  stock       Stock?     @relation(fields: [stockId], references: [id])
+  stockId     String?    @map("stock_id") @db.Uuid
   status      OrderStatus
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -180,8 +180,11 @@ model Stock {
 enum OrderStatus {
   PENDING
   IN_PROGRESS
-  COMPLETED
+  READY
+  SERVED
   CANCELLED
+  PAID
+  PAYMENT_REQUESTED
 }
 
 enum TableStatus {

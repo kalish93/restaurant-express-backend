@@ -1,5 +1,4 @@
 const prisma = require('../../database');
-const bcrypt = require('bcrypt');
 
 async function getCategories(req, res) {
   try {

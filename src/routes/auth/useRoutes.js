@@ -2,6 +2,8 @@ const express = require('express');
 const userController = require('../../controllers/auth/userContoller');
 const restaurantController = require('../../controllers/restaurant/restaurantController');
 const menuController = require('../../controllers/restaurant/menuController');
+const orderController = require('../../controllers/restaurant/orderController');
+const tableController = require('../../controllers/restaurant/tableController');
 
 const authenticate = require('../../middlewares/authenticate');
 
@@ -12,6 +14,9 @@ router.post('/login', userController.login);
 router.post('/refresh', userController.refreshToken);
 router.get('/restaurants/:id',  restaurantController.getRestaurant);
 router.get('/menus/:restaurantId',  menuController.getMenuByRestaurantId);
+router.get('/orders/active/:tableId',  orderController.getActiveOrdersByTableId);
+router.post('/orders',  orderController.createOrder);
+router.get('/tables/:id',  tableController.getTable);
 
 // Routes that require authentication
 router.use(authenticate);

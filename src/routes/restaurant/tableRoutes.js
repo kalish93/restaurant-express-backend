@@ -1,10 +1,13 @@
 const express = require('express');
 
 const tableController = require('../../controllers/restaurant/tableController');
+const router = express.Router();
+
+
+// router.get('/tables/:id',  tableController.getTable);
 
 const authenticate = require('../../middlewares/authenticate');
 
-const router = express.Router();
 
 router.use(authenticate);
 
