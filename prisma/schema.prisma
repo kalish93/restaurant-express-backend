@@ -22,6 +22,7 @@ model User {
   restaurantId String?     @map("restaurant_id") @db.Uuid
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
+    socketId     String?     // Add this line
 }
 
 model Role {
@@ -165,7 +166,7 @@ model Category {
 
 model Stock {
   id          String    @id @default(uuid()) @db.Uuid
-  name   String
+  name        String
   quantity    Int       // Quantity available in stock
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -174,6 +175,16 @@ model Stock {
   restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String   @map("restaurant_id") @db.Uuid
   MenuItem MenuItem[]
+}
+
+model Notification {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String
+  message     String
+  type        String
+  status      String   @default("unread")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // Consolidated OrderStatus Enum
