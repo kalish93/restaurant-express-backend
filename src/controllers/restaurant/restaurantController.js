@@ -75,6 +75,7 @@ async function getRestaurant(req, res) {
               orders : true,
               users: {
                 select: {
+                    id:true,
                     firstName: true,
                     lastName: true,
                     email: true,
@@ -93,7 +94,7 @@ async function getRestaurant(req, res) {
 }  
 
 async function addRestaurantStaff(req, res) {
-    try {
+    try { 
       const { email, firstName, lastName, password, passwordConfirmation, roleId, restaurantId } = req.body;
   
       if (!email || !password || !passwordConfirmation || !roleId) {

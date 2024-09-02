@@ -212,46 +212,63 @@ async function getActiveOrders(req, res) {
 
 async function getOrderHistory(req, res) {
     try {
-        const { role, restaurantId } = req.user;
-
-        let whereClause = {
-            restaurantId: restaurantId, // Ensure orders belong to the user's restaurant
-            status: {
-                in: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
-            },
-        };
-
-        if (role === 'Kitchen Staff') {
-            whereClause.items = { some: { menuItem: { destination: 'KITCHEN' } } }; // Kitchen staff see only kitchen orders in history
-        } else if (role === 'Bartender') {
-            whereClause.items = { some: { menuItem: { destination: 'BAR' } } }; // Bar staff see only bar orders in history
-        } else if (role !== 'Waiter' && role !== 'Restaurant Manager') {
-            return res.status(403).json({ error: 'Unauthorized access' });
-        }
-
-        const orderHistory = await prisma.order.findMany({
-            where: whereClause,
+      const { role, restaurantId } = req.user;
+      const page = Math.max(parseInt(req.query.page) || 1, 1);
+      const pageSize = Math.max(parseInt(req.query.pageSize) || 10, 1);
+  
+      let whereClause = {
+        restaurantId: restaurantId, // Ensure orders belong to the user's restaurant
+        status: {
+          in: [OrderStatus.PAID, OrderStatus.CANCELLED],
+        },
+      };
+  
+      if (role.name === 'Kitchen Staff') {
+        whereClause.items = { some: { menuItem: { destination: 'KITCHEN' } } }; // Kitchen staff see only kitchen orders in history
+      } else if (role.name === 'Bartender') {
+        whereClause.items = { some: { menuItem: { destination: 'BAR' } } }; // Bar staff see only bar orders in history
+      } else if (role.name !== 'Waiter' && role.name !== 'Restaurant Manager') {
+        return res.status(403).json({ error: 'Unauthorized access' });
+      }
+  
+      const totalCount = await prisma.order.count({
+        where: whereClause,
+      });
+  
+      const orderHistory = await prisma.order.findMany({
+        where: whereClause,
+        include: {
+          items: {
             include: {
-                items: {
-                    include: {
-                        menuItem: true,
-                    }
-                },
-                table: true,
-                kitchenOrders: true,
-                barOrders: true,
+              menuItem: true,
             },
-            orderBy: {
-                createdAt: 'asc' // Orders are retrieved in the order they were created
-            }
-        });
-
-        return res.status(200).json(orderHistory);
+          },
+          table: true,
+          kitchenOrders: true,
+          barOrders: true,
+        },
+        orderBy: {
+          createdAt: 'asc', // Orders are retrieved in the order they were created
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+  
+      const totalPages = Math.ceil(totalCount / pageSize);
+  
+      return res.status(200).json({
+        items: orderHistory,
+        totalCount: totalCount,
+        pageSize: pageSize,
+        currentPage: page,
+        totalPages: totalPages,
+      });
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: 'An error occurred while retrieving order history.' });
+      console.error(error);
+      return res.status(500).json({ error: 'An error occurred while retrieving order history.' });
     }
-}
+  }
+  
 
 
 async function updateOrderStatus(req, res) {
@@ -263,6 +280,16 @@ async function updateOrderStatus(req, res) {
     if (!validStatuses.includes(newStatus)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
+
+
+    const orderToUpdate = await prisma.order.findUnique({
+        where: {id: id},
+        include:{table: true, restaurant: true}
+    })
+
+    const waiterUsers = await prisma.user.findMany({
+        where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Waiter' } } // Adjust role name as necessary
+    });
   
     try {
       let order;
@@ -300,6 +327,19 @@ async function updateOrderStatus(req, res) {
             where: { orderId: id },
           });
   
+        if(newStatus === OrderStatus.READY){
+            for (const user of waiterUsers) {
+                await prisma.notification.create({
+                    data: {
+                        userId: user.id,
+                        message: `Kitchen order for Table ${orderToUpdate.table.number} is ready.`,
+                        type: 'order',
+                        status: 'unread'
+                    }
+                });
+                io.to(user.socketId).emit('notification', { message: `Kitchen order for Table ${orderToUpdate.table.number} is ready.`, status: 'unread' });
+            }
+        }
   
       } else if (role.name === 'Bartender') {
         order = await prisma.order.findUnique({ where: { id } });
@@ -318,6 +358,20 @@ async function updateOrderStatus(req, res) {
           barOrders = await prisma.barOrder.findMany({
             where: { orderId: id },
           });
+
+          if(newStatus === OrderStatus.READY){
+            for (const user of waiterUsers) {
+                await prisma.notification.create({
+                    data: {
+                        userId: user.id,
+                        message: `Bar order for Table ${orderToUpdate.table.number} is ready.`,
+                        type: 'order',
+                        status: 'unread'
+                    }
+                });
+                io.to(user.socketId).emit('notification', { message: `Bar order for Table ${orderToUpdate.table.number} is ready.`, status: 'unread' });
+            }
+        }
   
       } else if (role.name === 'Waiter' || role.name === 'Restaurant Manager') {
         order = await prisma.order.findUnique({

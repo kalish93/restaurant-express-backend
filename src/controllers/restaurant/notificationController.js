@@ -1,5 +1,5 @@
 const prisma = require('../../database');
-
+const io = require('../../../socketio');
 
 async function getUnreadNotificationsCount(req, res) {
     const userId = req.user.id;
@@ -69,9 +69,43 @@ async function markNotificationAsRead(req, res) {
   }
 }
 
+
+async function createCallWaiterNotification(req, res) {
+    try {
+      const {restaurantId, tableId} = req.body;
+
+      const waiterUsers = await prisma.user.findMany({
+        where: { restaurantId: restaurantId , role: { name: 'Waiter' } } // Adjust role name as necessary
+    });
+
+    const table = await prisma.table.findUnique({
+        where:{id: tableId}
+    })
+  
+
+      for (const user of waiterUsers) {
+        await prisma.notification.create({
+            data: {
+                userId: user.id,
+                message: `Customer at Table ${table.number} is requesting to get a waiter.`,
+                type: 'order',
+                status: 'unread'
+            }
+        });
+        io.to(user.socketId).emit('notification', { message: `Customer at Table ${table.number} is requesting to get a waiter.`, status: 'unread' });
+    }
+  
+      res.json();
+    } catch (error) {
+      console.error("Error retrieving notifications:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+
 module.exports = {
     getUnreadNotificationsCount,
     getNotifications,
     markNotificationAsRead,
-    markNotificationsAsRead
+    markNotificationsAsRead,
+    createCallWaiterNotification
 }

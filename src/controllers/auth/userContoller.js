@@ -114,18 +114,18 @@ async function createUser(req, res) {
 async function updateUser(req, res) {
   try {
     const userId = req.params.id;
-    const { userName, firstName, lastName, roleId } = req.body;
+    const { email, firstName, lastName, roleId } = req.body;
 
-    if (!userName || !roleId) {
+    if (!email || !roleId) {
       return res
         .status(400)
-        .json({ error: "Username and role are required fields" });
+        .json({ error: "Email and role are required fields" });
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        userName,
+        email,
         firstName: firstName,
         lastName: lastName,
         roleId,

@@ -4,6 +4,8 @@ const authenticate = require('../../middlewares/authenticate');
 
 
 const router = express.Router();
+router.post('/notifications/call-waiter', notificationController.createCallWaiterNotification);
+
 
 router.use(authenticate);
 
