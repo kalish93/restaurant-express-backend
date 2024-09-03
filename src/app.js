@@ -10,7 +10,7 @@ const orderRoutes = require("./routes/restaurant/orderRoutes")
 const notificationRoutes = require("./routes/restaurant/notificationRoutes")
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
-require('dotenv').config();
+// require('dotenv').config();
 const cors = require("cors");
 const app = express();
 app.use(cors());
