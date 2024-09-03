@@ -13,5 +13,8 @@ router.use(authenticate);
 router.put('/orders/status', orderController.updateOrderStatus);
 router.get('/orders/active', orderController.getActiveOrders);
 router.get('/orders/history', orderController.getOrderHistory);
+router.delete('/orders/items/:id', orderController.removeOrderItem);
+router.put('/orders/items', orderController.updateOrderItem);
+router.post('/orders/items', orderController.addOrderItem);
 
 module.exports = router;

@@ -290,6 +290,14 @@ async function updateOrderStatus(req, res) {
     const waiterUsers = await prisma.user.findMany({
         where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Waiter' } } // Adjust role name as necessary
     });
+
+    const BartenderUsers = await prisma.user.findMany({
+        where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+    });
+  
+    const KitchenUsers = await prisma.user.findMany({
+        where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Kitchen Staff' } } // Adjust role name as necessary
+    });
   
     try {
       let order;
@@ -409,6 +417,31 @@ async function updateOrderStatus(req, res) {
                   data: { status: newStatus },
                 });
         }
+
+        if(newStatus === OrderStatus.CANCELLED){
+          for (const user of BartenderUsers) {
+            await prisma.notification.create({
+                data: {
+                    userId: user.id,
+                    message: `Order for Table ${orderToUpdate.table.number} has been canceled.`,
+                    type: 'order',
+                    status: 'unread'
+                }
+            });
+            io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
+        }
+          for (const user of KitchenUsers) {
+            await prisma.notification.create({
+                data: {
+                    userId: user.id,
+                    message: `Order for Table ${orderToUpdate.table.number} has been canceled.`,
+                    type: 'order',
+                    status: 'unread'
+                }
+            });
+            io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
+        }
+        }
   
        
       } else {
@@ -433,12 +466,284 @@ async function updateOrderStatus(req, res) {
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
+
+  async function removeOrderItem(req, res) {
+    try {
+        const id  = req.params.id;
+
+        // Find the order item to delete
+        const orderItem = await prisma.orderItem.findUnique({
+            where: { id: id },
+            include: { order: {
+              include: {restaurant: true, table: true}
+            } , menuItem: true}
+        });
+
+        if (!orderItem) {
+            return res.status(404).json({ error: 'Order item not found' });
+        }
+
+        if(orderItem.menuItem.stockId){
+          await prisma.stock.update({
+            where: {id : orderItem.menuItem.stockId},
+            data: {
+              quantity: {
+                decrement: orderItem.quantity
+            }
+            }
+          })
+        }
+
+        // Remove the order item
+        await prisma.orderItem.delete({
+            where: { id: id }
+        });
+
+        const BartenderUsers = await prisma.user.findMany({
+          where: { restaurantId: orderItem.order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+      });
+
+        const KitchenUsers = await prisma.user.findMany({
+          where: { restaurantId: orderItem.order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+      });
+
+        if(orderItem.menuItem.destination === 'KITCHEN'){
+          for (const user of KitchenUsers) {
+            await prisma.notification.create({
+                data: {
+                    userId: user.id,
+                    message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`,
+                    type: 'order',
+                    status: 'unread'
+                }
+            });
+            io.to(user.socketId).emit('notification', { message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`, status: 'unread' });
+        }
+        }else{
+          for (const user of BartenderUsers) {
+            await prisma.notification.create({
+                data: {
+                    userId: user.id,
+                    message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`,
+                    type: 'order',
+                    status: 'unread'
+                }
+            });
+            io.to(user.socketId).emit('notification', { message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`, status: 'unread' });
+        }
+        }
+
+        return res.status(200).json({ message: 'Order item removed successfully' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'An error occurred while removing the order item.' });
+    }
+}
+
+
+async function updateOrderItem(req, res) {
+  try {
+      const { id, quantity, specialInstructions } = req.body;
+
+      // Find the order item to update
+      const orderItem = await prisma.orderItem.findUnique({
+          where: { id: id },
+          include: { order: {
+            include:{
+              restaurant: true,
+              table: true
+            }
+          } , menuItem: true}
+      });
+
+      const quantityDifference = orderItem.quantity - quantity;
+      if (!orderItem) {
+          return res.status(404).json({ error: 'Order item not found' });
+      }
+
+      if(orderItem.menuItem.stockId){
+        await prisma.stock.update({
+          where: {id : orderItem.menuItem.stockId},
+          data: {
+            quantity: {
+              decrement: quantityDifference
+          }
+          }
+        })
+      }
+
+      // Update the order item
+      const updatedOrderItem = await prisma.orderItem.update({
+          where: { id: id },
+          data: {
+              quantity: parseInt(quantity),
+              specialInstructions: specialInstructions || ''
+          }
+      });
+
+      const BartenderUsers = await prisma.user.findMany({
+        where: { restaurantId: orderItem.order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+    });
+
+      const KitchenUsers = await prisma.user.findMany({
+        where: { restaurantId: orderItem.order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+    });
+
+      if(orderItem.menuItem.destination === 'KITCHEN'){
+        for (const user of KitchenUsers) {
+          await prisma.notification.create({
+              data: {
+                  userId: user.id,
+                  message: `The order of table ${orderItem.order.table.name} has been updated.`,
+                  type: 'order',
+                  status: 'unread'
+              }
+          });
+          io.to(user.socketId).emit('notification', { message: `The order of table ${orderItem.order.table.name} has been updated.`, status: 'unread' });
+      }
+      }else{
+        for (const user of BartenderUsers) {
+          await prisma.notification.create({
+              data: {
+                  userId: user.id,
+                  message: `The order of table ${orderItem.order.table.name} has been updated.`,
+                  type: 'order',
+                  status: 'unread'
+              }
+          });
+          io.to(user.socketId).emit('notification', { message: `The order of table ${orderItem.order.table.name} has been updated.`, status: 'unread' });
+      }
+      }
+
+
+      return res.status(200).json(updatedOrderItem);
+  } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'An error occurred while updating the order item.' });
+  }
+}
   
+
+async function addOrderItem(req, res) {
+  try {
+      const { orderId, menuItemId, quantity, specialInstructions } = req.body;
+
+      // Fetch the order to check if it's a bar or kitchen order
+      const order = await prisma.order.findUnique({
+          where: { id: orderId },
+          include: { items: { include: { menuItem: true } }, restaurant: true, table: true }
+      });
+
+      if (!order) {
+          return res.status(404).json({ error: 'Order not found' });
+      }
+
+      if(order.menuItem?.stockId){
+       const stock = await prisma.stock.findUnique({
+          where: {id: order.menuItem.stockId}
+        })
+
+        if(stock.quantity < quantity){
+          return res.status(403).json({ error: 'You dont have this much amount for the item in the stock.' });
+
+        }else{
+        await prisma.stock.update({
+          where: {id : order.menuItem.stockId},
+          data: {
+            quantity: {
+              decrement: quantityDifference
+          }
+          }
+        })
+      }
+      }
+
+
+      // Create a new order item
+      const orderItem = await prisma.orderItem.create({
+          data: {
+              quantity: parseInt(quantity),
+              specialInstructions: specialInstructions || '',
+              menuItem: {
+                  connect: { id: menuItemId }
+              },
+              order: {
+                connect: { id : orderId}
+              }
+          },
+          include: {
+              menuItem: true,
+          }
+      });
+
+      // Check if the item is for the kitchen or bar and handle accordingly
+      if (orderItem.menuItem.destination === 'KITCHEN') {
+          await prisma.kitchenOrder.create({
+              data: {
+                  orderId: order.id,
+                  status: OrderStatus.PENDING
+              }
+          });
+      } else if (orderItem.menuItem.destination === 'BAR') {
+          await prisma.barOrder.create({
+              data: {
+                  orderId: order.id,
+                  stockId: orderItem.menuItem?.stockId,
+                  status: OrderStatus.PENDING
+              }
+          });
+      }
+      
+
+      const BartenderUsers = await prisma.user.findMany({
+        where: { restaurantId: order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+    });
+
+      const KitchenUsers = await prisma.user.findMany({
+        where: { restaurantId: order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+    });
+
+      if(orderItem.menuItem.destination === 'KITCHEN'){
+        for (const user of KitchenUsers) {
+          await prisma.notification.create({
+              data: {
+                  userId: user.id,
+                  message: `The order of table ${order.table.name} has been updated.`,
+                  type: 'order',
+                  status: 'unread'
+              }
+          });
+          io.to(user.socketId).emit('notification', { message: `The order of table ${order.table.name} has been updated.`, status: 'unread' });
+      }
+      }else{
+        for (const user of BartenderUsers) {
+          await prisma.notification.create({
+              data: {
+                  userId: user.id,
+                  message: `The order of table ${order.table.name} has been updated.`,
+                  type: 'order',
+                  status: 'unread'
+              }
+          });
+          io.to(user.socketId).emit('notification', { message: `The order of table ${order.table.name} has been updated.`, status: 'unread' });
+      }
+      }
+
+      return res.status(201).json(orderItem);
+  } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'An error occurred while adding the order item.' });
+  }
+}
+
 
 module.exports = {
     createOrder,
     getActiveOrdersByTableId,
     getActiveOrders,
     getOrderHistory,
-    updateOrderStatus
+    updateOrderStatus,
+    removeOrderItem,
+    updateOrderItem,
+    addOrderItem
 };
