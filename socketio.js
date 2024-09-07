@@ -31,14 +31,18 @@ io.use(async (socket, next) => {
 
 io.on('connection', (socket) => {
   console.log('New client connected', socket.id);
+  const token = socket.handshake.query.token;
+  if(token){
 
   if (socket.user) {
+
     // Register user with socket ID
     prisma.user.update({
       where: { id: socket.user.id },
       data: { socketId: socket.id }
     }).catch(err => console.error('Failed to update socketId:', err));
   }
+}
 
   // Sending test notifications every 5 seconds (for demonstration)
 //   setInterval(() => {

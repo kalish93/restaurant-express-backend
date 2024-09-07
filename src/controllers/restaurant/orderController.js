@@ -134,6 +134,7 @@ async function getActiveOrdersByTableId(req, res) {
                 kitchenOrders: true,
                 barOrders: true,
                 table: true,
+                restaurant: true,
             }
         });
 
@@ -737,6 +738,208 @@ async function addOrderItem(req, res) {
 }
 
 
+async function requestPaymentByTable(req, res) {
+  try {
+      const { tableId } = req.params; // Table ID from the request body
+      // const { role } = req.user; // Role of the current user
+
+      // if (role.name !== 'Waiter' && role.name !== 'Restaurant Manager') {
+      //     return res.status(403).json({ error: 'You do not have permission to request payment' });
+      // }
+
+      // Find all orders associated with the table that are not canceled or paid
+      const orders = await prisma.order.findMany({
+          where: {
+              tableId: tableId,
+              status: {
+                  notIn: ['CANCELLED', 'PAID'] // Exclude canceled and paid orders
+              }
+          },
+          include: {
+              restaurant: true,
+              kitchenOrders: true, // Include kitchen orders
+              barOrders: true, // Include bar orders
+              table: true
+          }
+      });
+
+      if (orders.length === 0) {
+          return res.status(404).json({ error: 'No orders found for the specified table' });
+      }
+
+      // Extract IDs for updating order statuses
+      const orderIds = orders.map(order => order.id);
+      const kitchenOrderIds = orders.flatMap(order => order.kitchenOrders.map(kitchenOrder => kitchenOrder.id));
+      const barOrderIds = orders.flatMap(order => order.barOrders.map(barOrder => barOrder.id));
+
+      // Update the status of the main orders, kitchen orders, and bar orders to "Payment Requested"
+      await prisma.order.updateMany({
+          where: { id: { in: orderIds } },
+          data: { status: 'PAYMENT_REQUESTED' }
+      });
+
+      await prisma.kitchenOrder.updateMany({
+          where: { id: { in: kitchenOrderIds } },
+          data: { status: 'PAYMENT_REQUESTED' }
+      });
+
+      await prisma.barOrder.updateMany({
+          where: { id: { in: barOrderIds } },
+          data: { status: 'PAYMENT_REQUESTED' }
+      });
+
+      // Notify the waiters
+      const waiterUsers = await prisma.user.findMany({
+          where: { restaurantId: orders[0].restaurant.id, role: { name: 'Waiter' } }
+      });
+
+      for (const user of waiterUsers) {
+          await prisma.notification.create({
+              data: {
+                  userId: user.id,
+                  message: `Payment has been requested for Table ${orders[0].table.number}.`,
+                  type: 'order',
+                  status: 'unread'
+              }
+          });
+          io.to(user.socketId).emit('notification', { message: `Payment has been requested for Table ${tableId}.`, status: 'unread' });
+      }
+
+      return res.status(200).json({ message: 'Payment request has been sent successfully' });
+  } catch (error) {
+      console.error('Error requesting payment:', error.message);
+      return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+const generateBillForTableOrders = async (req, res) => {
+
+  try {
+
+    const {orderIds} = req.body;
+    
+    // Fetch the orders by the given orderIds
+    const orders = await prisma.order.findMany({
+      where: {
+        id: {
+          in: orderIds,
+        },
+      },
+      include: {
+        items: {
+          include: { menuItem: true },
+        },
+            restaurant: true,
+            kitchenOrders: true, // Include kitchen orders
+            barOrders: true, // Include bar orders
+            table: true
+        
+    }});
+
+    if (orders.length === 0) {
+        return res.status(404).json({ error: 'No orders found for the specified table' });
+    }
+
+    const table = await prisma.table.update({
+      where:{id: orders[0].table.id},
+      data:{
+        status: TableStatus.AVAILABLE
+      }
+    })
+
+    // Extract IDs for updating order statuses
+    const kitchenOrderIds = orders.flatMap(order => order.kitchenOrders.map(kitchenOrder => kitchenOrder.id));
+    const barOrderIds = orders.flatMap(order => order.barOrders.map(barOrder => barOrder.id));
+
+    // Update the status of the main orders, kitchen orders, and bar orders to "Payment Requested"
+    await prisma.order.updateMany({
+        where: { id: { in: orderIds } },
+        data: { status: OrderStatus.PAID }
+    });
+
+    await prisma.kitchenOrder.updateMany({
+        where: { id: { in: kitchenOrderIds } },
+        data: { status: OrderStatus.PAID }
+    });
+
+    await prisma.barOrder.updateMany({
+        where: { id: { in: barOrderIds } },
+        data: { status: OrderStatus.PAID }
+    });
+
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No orders found' });
+    }
+
+    // Calculate the combined total for all orders
+    const total = orders.reduce((sum, order) => {
+      return (
+        sum +
+        order.items.reduce((orderSum, item) => {
+          return orderSum + item.quantity * item.menuItem.price;
+        }, 0)
+      );
+    }, 0);
+
+    // Create a consolidated bill
+    const bill = await prisma.bill.create({
+      data: {
+        total: total,
+        orderId: orders[0].id, // Associate it with the first order from the table
+      },
+    });
+
+    res.status(201).json({
+      message: 'Bill generated successfully for selected orders',
+      bill,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error generating bill' });
+  }
+};
+
+const generateBillForOrder = async (req, res) => {
+  const { orderId } = req.params;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: { menuItem: true },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Calculate the total for the order
+    const total = order.items.reduce((sum, item) => {
+      return sum + item.quantity * item.menuItem.price;
+    }, 0);
+
+    // Create a bill in the database
+    const bill = await prisma.bill.create({
+      data: {
+        total: total,
+        orderId: orderId,
+      },
+    });
+
+    res.status(201).json({
+      message: 'Bill generated successfully',
+      bill,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error generating bill' });
+  }
+};
+
 module.exports = {
     createOrder,
     getActiveOrdersByTableId,
@@ -745,5 +948,8 @@ module.exports = {
     updateOrderStatus,
     removeOrderItem,
     updateOrderItem,
-    addOrderItem
+    addOrderItem,
+    requestPaymentByTable, 
+    generateBillForTableOrders,
+    generateBillForOrder
 };
