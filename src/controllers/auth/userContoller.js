@@ -87,7 +87,7 @@ async function createUser(req, res) {
 
     if (existingUser) {
       return res.status(400).json({
-        error: "Username already exists",
+        error: "Email already exists",
       });
     }
 
@@ -265,10 +265,10 @@ async function refreshToken(req, res) {
 
 async function changePassword(req, res) {
   try {
-    const { username, oldPassword, newPassword, newPasswordConfirmation } = req.body;
+    const { email, oldPassword, newPassword, newPasswordConfirmation } = req.body;
 
     const user = await prisma.user.findUnique({
-      where: { userName: username },
+      where: { email: email },
     });
 
     if (!user || !(await bcrypt.compare(oldPassword, user.password))) {
@@ -285,7 +285,7 @@ async function changePassword(req, res) {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     const updatedUser = await prisma.user.update({
-    where: { userName: username },
+    where: { email: email },
     data: {
       password: hashedPassword}
     });
