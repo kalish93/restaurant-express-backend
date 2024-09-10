@@ -16,6 +16,7 @@ async function getMenus(req, res) {
           id : true,
           name : true,
           price : true,
+          currency: true,
           restaurantId : true,
           ingredients:true,
           category : true,
@@ -46,6 +47,7 @@ async function getMenuByRestaurantId(req, res) {
           id : true,
           name : true,
           price : true,
+          currency: true,
           restaurantId : true,
           ingredients:true,
           category : true,
@@ -66,7 +68,7 @@ async function getMenuByRestaurantId(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, ingredients , categoryId, stockId, destination} = req.body;
+    const { name, price, ingredients , categoryId, stockId, destination, currency} = req.body;
     const image = req.file ? req.file.filename : null; 
     const restaurantId = req.user.restaurantId;
     if(!restaurantId) {
@@ -109,6 +111,7 @@ async function createMenu(req, res) {
           },
         }),
         destination: destination,
+        currency: currency
       },
     });
     res.json(menu);
@@ -131,6 +134,7 @@ async function getMenu(req, res) {
               name : true,
               price : true, 
               ingredient:true,
+              currency: true,
               stock: true,
               isDrink : true,
               restaurant: {
@@ -159,7 +163,7 @@ async function getMenu(req, res) {
 async function updateMenu(req, res) {
     try {
       const id = req.params.id;
-      const { name, price, ingredients , categoryId, destination} = req.body;
+      const { name, price, ingredients , categoryId, destination, currency} = req.body;
       const image = req.file ? req.file.filename : null;
 
       const restaurantId = req.user.restaurantId;
@@ -215,7 +219,8 @@ async function updateMenu(req, res) {
             connect: { id: restaurantId },
           },
           image: image || existingMenu.image,
-          destination: destination
+          destination: destination,
+          currency: currency
         }
       });
 

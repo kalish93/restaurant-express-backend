@@ -77,6 +77,17 @@ async function createOrder(req, res) {
                     }
                 });
 
+                if (orderItem.menuItem.stockId) {
+                  await prisma.stock.update({
+                      where: { id: orderItem.menuItem.stockId },
+                      data: {
+                          quantity: {
+                              decrement: orderItem.quantity
+                          }
+                      }
+                  });
+              }
+
                 // Send notification to bar staff
                 for (const user of barUsers) {
                     await prisma.notification.create({
@@ -448,10 +459,22 @@ async function updateOrderStatus(req, res) {
       } else {
         return res.status(403).json({ error: 'You do not have permission to update this order' });
       }
+
+      for( const item of  orderToUpdate.items){
+        if (item.menuItem.stockId) {
+          await prisma.stock.update({
+              where: { id: item.menuItem.stockId },
+              data: {
+                  quantity: {
+                      increment: item.quantity
+                  }
+              }
+          });
+      }
+      }
   
       // Determine the final status based on sub-orders
       const finalStatus = determineFinalStatus(kitchenOrders, barOrders);
-  
      
        if(kitchenOrders.length > 0 || barOrders.length > 0){
         await prisma.order.update({
