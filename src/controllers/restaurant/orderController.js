@@ -194,27 +194,64 @@ async function getActiveOrders(req, res) {
         });
 
         // Compute role-specific status
-        const activeOrders = orders.map(order => {
-            const kitchenStatus = order.kitchenOrders.length > 0 
-                ? order.kitchenOrders[0].status 
-                : OrderStatus.PENDING;
-            const barStatus = order.barOrders.length > 0 
-                ? order.barOrders[0].status 
-                : OrderStatus.PENDING;
+        // const activeOrders = orders.map(order => {
+        //     const kitchenStatus = order.kitchenOrders.length > 0 
+        //         ? order.kitchenOrders[0].status 
+        //         : OrderStatus.PENDING;
+        //     const barStatus = order.barOrders.length > 0 
+        //         ? order.barOrders[0].status 
+        //         : OrderStatus.PENDING;
                 
-            const roleSpecificStatus = (role.name === 'Kitchen Staff')
-                ? kitchenStatus
-                : (role.name === 'Bartender')
-                ? barStatus
-                : order.status;
+        //     const roleSpecificStatus = (role.name === 'Kitchen Staff')
+        //         ? kitchenStatus
+        //         : (role.name === 'Bartender')
+        //         ? barStatus
+        //         : order.status;
                 
-            return {
-                ...order,
-                roleSpecificStatus: roleSpecificStatus
-            };
-        });
+        //     return {
+        //         ...order,
+        //         roleSpecificStatus: roleSpecificStatus
+        //     };
+        // });
 
-        return res.status(200).json(activeOrders);
+        // return res.status(200).json(activeOrders);
+        // Filter orders and return only relevant ones based on the role
+        const activeOrders = orders.map(order => {
+          const kitchenItems = order.items.filter(item => item.menuItem.destination === 'KITCHEN');
+          const barItems = order.items.filter(item => item.menuItem.destination === 'BAR');
+          
+          // Determine role-specific view
+          let relevantItems = order.items; // Default for roles like Waiter/Manager
+          if (role.name === 'Kitchen Staff') {
+              relevantItems = kitchenItems; // Show only kitchen items
+          } else if (role.name === 'Bartender') {
+              relevantItems = barItems; // Show only bar items
+          }
+
+          const kitchenStatus = order.kitchenOrders.length > 0 
+              ? order.kitchenOrders[0].status 
+              : OrderStatus.PENDING;
+          const barStatus = order.barOrders.length > 0 
+              ? order.barOrders[0].status 
+              : OrderStatus.PENDING;
+              
+          const roleSpecificStatus = (role.name === 'Kitchen Staff')
+              ? kitchenStatus
+              : (role.name === 'Bartender')
+              ? barStatus
+              : order.status;
+
+          // Return orders that have relevant items based on the role
+          if (relevantItems.length > 0) {
+              return {
+                  ...order,
+                  items: relevantItems,
+                  roleSpecificStatus: roleSpecificStatus,
+              };
+          }
+      }).filter(order => order !== undefined); // Filter out undefined (irrelevant orders)
+
+      return res.status(200).json(activeOrders);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: 'An error occurred while retrieving active orders.' });
