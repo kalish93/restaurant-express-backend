@@ -296,7 +296,9 @@ async function updateOrderStatus(req, res) {
 
     const orderToUpdate = await prisma.order.findUnique({
         where: {id: id},
-        include:{table: true, restaurant: true}
+        include:{table: true, restaurant: true, items: {
+          include: {menuItem: true}
+        }}
     })
 
     const waiterUsers = await prisma.user.findMany({
@@ -441,6 +443,19 @@ async function updateOrderStatus(req, res) {
                 }
             });
             io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
+            
+            for( const item of  orderToUpdate.items){
+              if (item.menuItem.stockId) {
+                await prisma.stock.update({
+                    where: { id: item.menuItem.stockId },
+                    data: {
+                        quantity: {
+                            increment: item.quantity
+                        }
+                    }
+                });
+            }
+            }
         }
           for (const user of KitchenUsers) {
             await prisma.notification.create({
@@ -458,19 +473,6 @@ async function updateOrderStatus(req, res) {
        
       } else {
         return res.status(403).json({ error: 'You do not have permission to update this order' });
-      }
-
-      for( const item of  orderToUpdate.items){
-        if (item.menuItem.stockId) {
-          await prisma.stock.update({
-              where: { id: item.menuItem.stockId },
-              data: {
-                  quantity: {
-                      increment: item.quantity
-                  }
-              }
-          });
-      }
       }
   
       // Determine the final status based on sub-orders
