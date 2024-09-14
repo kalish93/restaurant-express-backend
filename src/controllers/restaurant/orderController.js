@@ -189,7 +189,7 @@ async function getActiveOrders(req, res) {
                 barOrders: true,
             },
             orderBy: {
-                createdAt: 'asc' // Orders are retrieved in the order they were created
+                createdAt: 'desc'
             }
         });
 

@@ -44,6 +44,9 @@ const categories = [
   { name: 'Desserts' },
   { name: 'Drinks' },
   { name: 'Sides' },
+  { name: 'Cocktails' },
+  { name: 'Wine' },
+  { name: 'Spritz' },
 ];
 
 async function seedCategories() {

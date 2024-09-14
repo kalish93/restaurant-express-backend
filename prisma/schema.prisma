@@ -8,8 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Existing User, Role, Permission, RolePermission, Restaurant, QRCode, MenuItem, Order, OrderItem, Bill, KitchenOrder, BarOrder, Category, and Stock Models
-
 model User {
   id           String      @id @default(uuid()) @db.Uuid
   firstName    String
