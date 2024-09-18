@@ -36,4 +36,7 @@ router.put('/restaurants/:id', (req, res) => {
   authenticate(req, res, () => restaurantController.updateRestaurant(req, res));
 });
 
+router.put('/restaurants/:id/status', restaurantController.setRestaurantOpenStatus);
+router.put('/restaurants/:id/tax-rate', restaurantController.setRestaurantTaxRate);
+
 module.exports = router;

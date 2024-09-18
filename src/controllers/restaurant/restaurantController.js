@@ -14,6 +14,8 @@ async function getRestaurants(req, res) {
             name : true,
             tables : true, 
             menuItems: true,
+            isOpen: true,
+            taxRate: true,
             orders : true,
             users : true,
             isActive : true,
@@ -72,6 +74,8 @@ async function getRestaurant(req, res) {
               name : true,
               tables : true, 
               menuItems: true,
+              isOpen: true,
+              taxRate: true,
               orders : true,
               users: {
                 select: {
@@ -194,6 +198,60 @@ async function addRestaurantStaff(req, res) {
       res.status(500).send("Internal Server Error");
     }
   }  
+
+  async function setRestaurantOpenStatus(req, res) {
+    try {
+      const id = req.params.id;
+      const { isOpen } = req.body;
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: id },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const updatedRestaurant = await prisma.restaurant.update({
+        where: { id: id },
+        data: {
+          isOpen: isOpen,
+        },
+      });
+  
+      res.json(updatedRestaurant);
+    } catch (error) {
+      console.error("Error updating restaurant:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function setRestaurantTaxRate(req, res) {
+    try {
+      const id = req.params.id;
+      const { taxRate } = req.body;
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: id },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const updatedRestaurant = await prisma.restaurant.update({
+        where: { id: id },
+        data: {
+          taxRate: taxRate,
+        },
+      });
+  
+      res.json(updatedRestaurant);
+    } catch (error) {
+      console.error("Error updating restaurant:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
   
 module.exports = {
     getRestaurants,
@@ -202,4 +260,6 @@ module.exports = {
     addRestaurantStaff,
     deleteRestaurant,
     updateRestaurant, 
+    setRestaurantOpenStatus,
+    setRestaurantTaxRate
 }

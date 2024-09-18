@@ -56,6 +56,8 @@ model RolePermission {
 model Restaurant {
   id         String     @id @default(uuid()) @db.Uuid
   name       String
+  isOpen     Boolean    @default(true)
+  taxRate    Decimal    @default(0)   
   menuItems  MenuItem[]
   stock      Stock[]
   orders     Order[]
