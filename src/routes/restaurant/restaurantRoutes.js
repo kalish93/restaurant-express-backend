@@ -38,5 +38,12 @@ router.put('/restaurants/:id', (req, res) => {
 
 router.put('/restaurants/:id/status', restaurantController.setRestaurantOpenStatus);
 router.put('/restaurants/:id/tax-rate', restaurantController.setRestaurantTaxRate);
+router.post('/credit-cards', restaurantController.createCreditCard);
+router.get('/restaurants/:id/credit-cards', restaurantController.getCreditCards);
+router.delete('/credit-cards/:id', restaurantController.deleteCreditCard);
+router.post('/discounts', restaurantController.createDiscount);
+router.get('/restaurants/:id/discounts', restaurantController.getDiscounts);
+router.delete('/discounts/:id', restaurantController.deleteDiscount);
+router.get('/restaurants/:id/z-report', restaurantController.getZreportData);
 
 module.exports = router;

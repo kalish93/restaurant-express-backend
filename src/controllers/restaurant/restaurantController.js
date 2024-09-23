@@ -252,7 +252,297 @@ async function addRestaurantStaff(req, res) {
       res.status(500).send("Internal Server Error");
     }
   }  
+
+  async function createCreditCard(req, res) {
+    try {
+      const { restaurantId, name } = req.body;
   
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: restaurantId },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const creditCard = await prisma.creditCard.create({
+        data: {
+          name: name,
+          restaurantId: restaurantId,
+        },
+      });
+  
+      res.json(creditCard);
+    } catch (error) {
+      console.error("Error creating card:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function getCreditCards(req, res) {
+    try {
+      const { id} = req.params;
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: id },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const creditCards = await prisma.creditCard.findMany({
+        where: {
+          restaurantId: id
+        },
+      });
+  
+      res.json(creditCards);
+    } catch (error) {
+      console.error("Error geting cards:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function deleteCreditCard(req, res) {
+    try {
+      const { id} = req.params;
+  
+      const card = await prisma.creditCard.findUnique({
+        where: { id: id },
+      });
+  
+      if (!card) {
+        return res.status(404).json({ error: "Card not found" });
+      }
+  
+      const deletedCard = await prisma.creditCard.delete({
+        where: {
+          id: id
+        },
+      });
+  
+      res.json(deletedCard);
+    } catch (error) {
+      console.error("Error deleting credit card:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function createDiscount(req, res) {
+    try {
+      const { restaurantId, name, percentage } = req.body;
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: restaurantId },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const discount = await prisma.discount.create({
+        data: {
+          name: name,
+          restaurantId: restaurantId,
+          percentage: percentage
+        },
+      });
+  
+      res.json(discount);
+    } catch (error) {
+      console.error("Error creating discount:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function getDiscounts(req, res) {
+    try {
+      const { id} = req.params;
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: { id: id },
+      });
+  
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+  
+      const discount = await prisma.discount.findMany({
+        where: {
+          restaurantId: id
+        },
+      });
+  
+      res.json(discount);
+    } catch (error) {
+      console.error("Error geting discounts:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function deleteDiscount(req, res) {
+    try {
+      const { id} = req.params;
+  
+      const discount = await prisma.discount.findUnique({
+        where: { id: id },
+      });
+  
+      if (!discount) {
+        return res.status(404).json({ error: "Card not found" });
+      }
+  
+      const deletedDiscount = await prisma.discount.delete({
+        where: {
+          id: id
+        },
+      });
+  
+      res.json(deletedDiscount);
+    } catch (error) {
+      console.error("Error deleting credit discount:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }  
+
+  async function getZreportData(req, res) {
+    try {
+      const { id } = req.params;
+  
+      const today = new Date();
+      const startDate = new Date(today.setHours(0, 0, 0, 0)); // Start of today
+      const endDate = new Date(today.setHours(23, 59, 59, 999));
+  
+      const restaurant = await prisma.restaurant.findUnique({
+        where: {
+          id: id
+        }
+      });
+  
+      if (!restaurant) {
+        return res.status(404).send("Restaurant not found");
+      }
+  
+      const orders = await prisma.order.findMany({
+        where: {
+          restaurantId: id,
+          createdAt: {
+            gte: startDate, 
+            lt: endDate 
+          },
+          status: "PAID" 
+        },
+        include: {
+          items: {
+            include: { menuItem: {include: {category: true}} },
+          },
+          restaurant: true,
+          kitchenOrders: true, 
+          barOrders: true, 
+          table: true,
+          bills:{ include: {
+            creditCardPayments: {
+              include: { card : true}
+            },
+            discount: true
+          }}
+        }
+      });
+
+
+      const totalSales = orders.reduce((acc, order) => {
+        const orderTotal = order.items.reduce((sum, item) => {
+          return sum + (item.quantity * item.menuItem.price);
+        }, 0);
+        acc.total += orderTotal;
+  
+        // Categorize items
+        order.items.forEach(item => {
+          const categoryName = item.menuItem.category.name;
+          const categorySales = item.quantity * item.menuItem.price;
+  
+          if (!acc.categories[categoryName]) {
+            acc.categories[categoryName] = { quantitySold: 0, totalSales: 0 };
+          }
+  
+          acc.categories[categoryName].quantitySold += item.quantity;
+          acc.categories[categoryName].totalSales += categorySales;
+        });
+  
+        return acc;
+      }, { total: 0, categories: {} });
+
+
+      const totalTax = orders.reduce((acc, order) => {
+        if(order.bills.length > 0){
+        const bill = order.bills[0];
+        return acc + (bill?.taxAmount || 0);
+      } // Assuming each order has one bill
+      }, 0);
+  
+      const totalPayments = {
+        cash: 0,
+        giftCard: 0,
+        credit: 0,
+      };
+  
+      let totalTips = 0; // Variable to track total tips
+    const creditCardBreakdown = {}; // Object to store credit card breakdown
+    const discounts = {}; // Object to store discount information
+
+
+    orders.forEach(order => {
+      const bill = order.bills[0]; // Assuming each order has one bill
+      if (bill) {
+        totalPayments.cash += bill.cashPaymentAmount || 0;
+        totalPayments.giftCard += bill.giftCardPaymentAmount || 0;
+        totalTips += bill.tipAmount || 0; // Add to total tips
+
+        // Add credit card payments
+        if (bill?.creditCardPayments) {
+          bill.creditCardPayments.forEach(payment => {
+            totalPayments.credit += payment.amount || 0;
+            const cardType = payment.card.name; // Assuming card type is in the `name` field
+            creditCardBreakdown[cardType] = creditCardBreakdown[cardType] || { amount: 0, transactions: 0 };
+            creditCardBreakdown[cardType].amount += payment.amount || 0;
+            creditCardBreakdown[cardType].transactions += 1;
+          });
+        }
+
+        if (bill.discount) {
+          const discountName = bill.discount.name;
+          discounts[discountName] = discounts[discountName] || { count: 0, total: 0 };
+          discounts[discountName].count += 1;
+          discounts[discountName].total += bill.discountAmount; // Assuming there's a total field in the discount
+        }
+      
+      }
+    });
+      // Prepare the response data
+      const responseData = {
+        orders,
+        totalSales: totalSales.total,
+        categorySales: totalSales.categories,
+        totalTax: totalTax,
+        paymentDetails: totalPayments,
+        totalTips: totalTips,
+        creditCardBreakdown: Object.entries(creditCardBreakdown).map(([cardType, details]) => ({
+          cardType,
+          amount: details.amount,
+          transactions: details.transactions
+        })),
+        discounts: discounts
+      };
+  
+      res.json(responseData); // Send the orders as the response
+    } catch (error) {
+      console.error("Error fetching Z-report data:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+  
+
 module.exports = {
     getRestaurants,
     createRestaurant,
@@ -261,5 +551,12 @@ module.exports = {
     deleteRestaurant,
     updateRestaurant, 
     setRestaurantOpenStatus,
-    setRestaurantTaxRate
+    setRestaurantTaxRate,
+    createCreditCard,
+    deleteCreditCard,
+    getCreditCards,
+    createDiscount,
+    getDiscounts,
+    deleteDiscount,
+    getZreportData
 }

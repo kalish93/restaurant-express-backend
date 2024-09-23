@@ -66,6 +66,9 @@ model Restaurant {
   isActive   Boolean    @default(true)
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  creditCards CreditCard[]
+  discounts Discount[]
 }
 model MenuItem {
   id           String     @id @default(uuid()) @db.Uuid
@@ -99,6 +102,11 @@ model Order {
   tableId      String        @map("table_id") @db.Uuid
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  tipAmount     Float?        // Add tipAmount to store the tip value
+  discountAmount Float?       // Add discountAmount to store the discount value
+  discount   Discount?    @relation(fields: [discountId], references: [id])
+  discountId  String?       @map("discount_id") @db.Uuid
 }
 
 model OrderItem {
@@ -118,6 +126,16 @@ model Bill {
   total       Float
   order       Order   @relation(fields: [orderId], references: [id])
   orderId     String   @map("order_id") @db.Uuid
+  tipAmount     Float?       
+  discountAmount Float?  
+  taxAmount Float?  
+  discount   Discount?    @relation(fields: [discountId], references: [id])
+  discountId  String?       @map("discount_id") @db.Uuid
+
+  cashPaymentAmount   Float?
+  giftCardPaymentAmount  Float?
+  creditCardPayments     CreditCardPayment[]
+
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 }
@@ -176,6 +194,39 @@ model Stock {
   restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
   restaurantId String   @map("restaurant_id") @db.Uuid
   MenuItem MenuItem[]
+}
+
+model CreditCard {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  restaurant  Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId String   @map("restaurant_id") @db.Uuid
+
+  payments     CreditCardPayment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+model Discount {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   // Discount name, like 'Staff Discount'
+  percentage    Float    // Discount percentage or amount
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId  String   @map("restaurant_id") @db.Uuid
+  orders        Order[]
+  bills         Bill[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CreditCardPayment{
+ id            String   @id @default(uuid()) @db.Uuid
+  amount        Float
+  card    CreditCard @relation(fields: [creditCardId], references: [id])
+  creditCardId  String   @map("credit_card_id") @db.Uuid
+  bill    Bill @relation(fields: [billId], references: [id])
+  billId  String   @map("bill_id") @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Notification {

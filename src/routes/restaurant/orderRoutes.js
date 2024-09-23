@@ -19,6 +19,7 @@ router.put('/orders/items', orderController.updateOrderItem);
 router.post('/orders/items', orderController.addOrderItem);
 router.post('/orders/bill', orderController.generateBillForTableOrders);
 router.post('/orders/:tableId/bill', orderController.generateBillForOrder);
+router.post('/orders/print-bill', orderController.printBill);
 
 
 

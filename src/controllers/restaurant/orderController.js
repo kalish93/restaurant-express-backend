@@ -874,11 +874,39 @@ async function requestPaymentByTable(req, res) {
   }
 }
 
+
+const printBill = async (req, res) => {
+  try {
+    const { orderIds, discount, tipAmount, discountId } = req.body;
+
+    await prisma.order.updateMany({
+      where: {
+        id: {
+          in: orderIds, 
+        },
+      },
+      data: {
+        tipAmount: tipAmount,
+        discountAmount: discount,
+        discountId: discountId
+      },
+    });
+
+    res.status(200).json({
+      message: 'Tip and discount saved successfully',
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error saving tip and discount' });
+  }
+};
+
+
 const generateBillForTableOrders = async (req, res) => {
 
   try {
 
-    const {orderIds} = req.body;
+    const {orderIds, cashPayment, giftCardPayment, creditCards} = req.body;
     
     // Fetch the orders by the given orderIds
     const orders = await prisma.order.findMany({
@@ -944,13 +972,42 @@ const generateBillForTableOrders = async (req, res) => {
       );
     }, 0);
 
+    const discountAmount = orders[0].discountAmount || 0; // Assuming discountAmount is stored in each order
+    const tipAmount = orders[0].tipAmount || 0; // Assuming tipAmount is stored in each order
+    const taxRate = orders[0].restaurant.taxRate;
+
+    // Calculate total after discount
+    const totalAfterDiscount = total - discountAmount;
+
+    // Calculate tax amount
+    const taxAmount = totalAfterDiscount * (taxRate / 100);
+
+    // Calculate final total
+    const finalTotal = totalAfterDiscount + taxAmount + tipAmount;
+
     // Create a consolidated bill
     const bill = await prisma.bill.create({
       data: {
-        total: total,
+        total: finalTotal,
         orderId: orders[0].id, // Associate it with the first order from the table
+        discountAmount: discountAmount,
+        tipAmount: tipAmount,
+        taxAmount: taxAmount,
+        cashPaymentAmount: parseFloat(cashPayment),
+        giftCardPaymentAmount: parseFloat(giftCardPayment),
+        discountId: orders[0].discountId,
       },
     });
+
+    for(const card of creditCards){
+      await prisma.creditCardPayment.create({
+          data:{
+            amount: card.creditPayment,
+            creditCardId: card.creditCardType,
+            billId: bill.id
+          }
+      })
+    }
 
     res.status(201).json({
       message: 'Bill generated successfully for selected orders',
@@ -1013,5 +1070,6 @@ module.exports = {
     addOrderItem,
     requestPaymentByTable, 
     generateBillForTableOrders,
-    generateBillForOrder
+    generateBillForOrder,
+    printBill
 };
