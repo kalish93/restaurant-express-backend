@@ -8,7 +8,9 @@ const io = socketIO({
     origin: '*', // Allow all origins (adjust as necessary)
     methods: ['GET', 'POST'],
     credentials: true
-  }
+  },
+  pingTimeout: 60000, // 60 seconds timeout before considering a client disconnected
+  pingInterval: 25000,
 });
 
 // Middleware for authentication
@@ -48,6 +50,32 @@ io.on('connection', (socket) => {
 //   setInterval(() => {
 //     socket.emit('notification', { message: 'Test notification from server' });
 //   }, 5000);
+
+
+socket.on('disconnect', (reason) => {
+  console.log('Disconnected:', reason);
+  // Handle reconnection logic if necessary
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection Error:', error.message);
+});
+
+socket.on('disconnect', async (reason) => {
+  console.log('Disconnected:', reason);
+  if (socket.user) {
+    await prisma.user.updateMany({
+      where: { socketId: socket.id },
+      data: { socketId: null }
+    }).catch(err => console.error('Failed to clear socketId:', err));
+  }
+
+  // Handle client reconnection if needed (this can also be managed on the client)
+  if (reason === 'ping timeout' || reason === 'transport close') {
+    // Optionally handle reconnection logic on the server side
+    console.log('Client will try to reconnect...');
+  }
+});
 
   socket.on('disconnect', async () => {
     console.log('Client disconnected', socket.id);

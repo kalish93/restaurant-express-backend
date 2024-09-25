@@ -37,7 +37,6 @@ router.put('/restaurants/:id', (req, res) => {
 });
 
 router.put('/restaurants/:id/status', restaurantController.setRestaurantOpenStatus);
-router.put('/restaurants/:id/tax-rate', restaurantController.setRestaurantTaxRate);
 router.post('/credit-cards', restaurantController.createCreditCard);
 router.get('/restaurants/:id/credit-cards', restaurantController.getCreditCards);
 router.delete('/credit-cards/:id', restaurantController.deleteCreditCard);

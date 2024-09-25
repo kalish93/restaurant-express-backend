@@ -15,7 +15,6 @@ async function getRestaurants(req, res) {
             tables : true, 
             menuItems: true,
             isOpen: true,
-            taxRate: true,
             orders : true,
             users : true,
             isActive : true,
@@ -75,7 +74,6 @@ async function getRestaurant(req, res) {
               tables : true, 
               menuItems: true,
               isOpen: true,
-              taxRate: true,
               orders : true,
               users: {
                 select: {
@@ -216,33 +214,6 @@ async function addRestaurantStaff(req, res) {
         where: { id: id },
         data: {
           isOpen: isOpen,
-        },
-      });
-  
-      res.json(updatedRestaurant);
-    } catch (error) {
-      console.error("Error updating restaurant:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }  
-
-  async function setRestaurantTaxRate(req, res) {
-    try {
-      const id = req.params.id;
-      const { taxRate } = req.body;
-  
-      const restaurant = await prisma.restaurant.findUnique({
-        where: { id: id },
-      });
-  
-      if (!restaurant) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-  
-      const updatedRestaurant = await prisma.restaurant.update({
-        where: { id: id },
-        data: {
-          taxRate: taxRate,
         },
       });
   
@@ -475,11 +446,17 @@ async function addRestaurantStaff(req, res) {
 
 
       const totalTax = orders.reduce((acc, order) => {
-        if(order.bills.length > 0){
-        const bill = order.bills[0];
-        return acc + (bill?.taxAmount || 0);
-      } // Assuming each order has one bill
-      }, 0);
+        if (order.bills.length > 0) {
+          const bill = order.bills[0]; // Assuming one bill per order
+          if (bill && typeof bill.taxAmount !== 'undefined') {
+            return acc + bill.taxAmount; // Add taxAmount if it exists
+          }
+        }
+        return acc; // Always return acc, even if no taxAmount
+      }, 0); // Initialize acc with 0
+      
+
+      console.log(totalTax)
   
       const totalPayments = {
         cash: 0,
@@ -551,7 +528,6 @@ module.exports = {
     deleteRestaurant,
     updateRestaurant, 
     setRestaurantOpenStatus,
-    setRestaurantTaxRate,
     createCreditCard,
     deleteCreditCard,
     getCreditCards,

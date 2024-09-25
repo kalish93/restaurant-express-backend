@@ -57,7 +57,6 @@ model Restaurant {
   id         String     @id @default(uuid()) @db.Uuid
   name       String
   isOpen     Boolean    @default(true)
-  taxRate    Decimal    @default(0)   
   menuItems  MenuItem[]
   stock      Stock[]
   orders     Order[]
@@ -77,6 +76,7 @@ model MenuItem {
   ingredients  String?
   image        String?
   currency     String?
+  taxRate      Decimal   @default(0)
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   restaurantId String     @map("restaurant_id") @db.Uuid
   category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)

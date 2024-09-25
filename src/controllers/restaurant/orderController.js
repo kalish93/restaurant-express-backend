@@ -855,7 +855,23 @@ async function requestPaymentByTable(req, res) {
           where: { restaurantId: orders[0].restaurant.id, role: { name: 'Waiter' } }
       });
 
+      const managerUsers = await prisma.user.findMany({
+          where: { restaurantId: orders[0].restaurant.id, role: { name: 'Restaurant Manager' } }
+      });
+
       for (const user of waiterUsers) {
+          await prisma.notification.create({
+              data: {
+                  userId: user.id,
+                  message: `Payment has been requested for Table ${orders[0].table.number}.`,
+                  type: 'order',
+                  status: 'unread'
+              }
+          });
+          io.to(user.socketId).emit('notification', { message: `Payment has been requested for Table ${tableId}.`, status: 'unread' });
+      }
+
+      for (const user of managerUsers) {
           await prisma.notification.create({
               data: {
                   userId: user.id,
@@ -906,7 +922,7 @@ const generateBillForTableOrders = async (req, res) => {
 
   try {
 
-    const {orderIds, cashPayment, giftCardPayment, creditCards} = req.body;
+    const {orderIds, cashPayment, giftCardPayment, creditCards, taxAmount} = req.body;
     
     // Fetch the orders by the given orderIds
     const orders = await prisma.order.findMany({
@@ -974,13 +990,11 @@ const generateBillForTableOrders = async (req, res) => {
 
     const discountAmount = orders[0].discountAmount || 0; // Assuming discountAmount is stored in each order
     const tipAmount = orders[0].tipAmount || 0; // Assuming tipAmount is stored in each order
-    const taxRate = orders[0].restaurant.taxRate;
 
     // Calculate total after discount
     const totalAfterDiscount = total - discountAmount;
 
     // Calculate tax amount
-    const taxAmount = totalAfterDiscount * (taxRate / 100);
 
     // Calculate final total
     const finalTotal = totalAfterDiscount + taxAmount + tipAmount;

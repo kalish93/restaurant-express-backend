@@ -17,6 +17,7 @@ async function getMenus(req, res) {
           name : true,
           price : true,
           currency: true,
+          taxRate: true,
           restaurantId : true,
           ingredients:true,
           category : true,
@@ -47,6 +48,7 @@ async function getMenuByRestaurantId(req, res) {
           id : true,
           name : true,
           price : true,
+          taxRate: true,
           currency: true,
           restaurantId : true,
           ingredients:true,
@@ -68,7 +70,7 @@ async function getMenuByRestaurantId(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, ingredients , categoryId, stockId, destination, currency} = req.body;
+    const { name, price, ingredients , categoryId, stockId, destination, currency, taxRate } = req.body;
     const image = req.file ? req.file.filename : null; 
     const restaurantId = req.user.restaurantId;
     if(!restaurantId) {
@@ -111,8 +113,12 @@ async function createMenu(req, res) {
           },
         }),
         destination: destination,
-        currency: currency
-      },
+        currency: currency,
+        taxRate: taxRate,
+      }, include: {
+        category: true, 
+        stock: true
+      }
     });
     res.json(menu);
   } catch (error) {
@@ -134,6 +140,7 @@ async function getMenu(req, res) {
               name : true,
               price : true, 
               ingredient:true,
+              taxRate: true,
               currency: true,
               stock: true,
               isDrink : true,
@@ -163,7 +170,7 @@ async function getMenu(req, res) {
 async function updateMenu(req, res) {
     try {
       const id = req.params.id;
-      const { name, price, ingredients , categoryId, destination, currency} = req.body;
+      const { name, price, ingredients , categoryId, destination, currency, taxRate} = req.body;
       const image = req.file ? req.file.filename : null;
 
       const restaurantId = req.user.restaurantId;
@@ -220,7 +227,11 @@ async function updateMenu(req, res) {
           },
           image: image || existingMenu.image,
           destination: destination,
-          currency: currency
+          currency: currency, 
+          taxRate: taxRate
+        }, include: {
+          category: true, 
+          stock: true
         }
       });
 
