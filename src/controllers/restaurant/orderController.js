@@ -506,7 +506,10 @@ async function updateOrderStatus(req, res) {
             io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
         }
         }
-  
+        await prisma.table.update({
+          where: { id: orderToUpdate.table.id },
+          data: { status: 'AVAILABLE' } // adjust value based on your enum/string values
+        });
        
       } else {
         return res.status(403).json({ error: 'You do not have permission to update this order' });
