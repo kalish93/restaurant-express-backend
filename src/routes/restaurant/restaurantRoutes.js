@@ -3,6 +3,7 @@ const restaurantController = require('../../controllers/restaurant/restaurantCon
 const authenticate = require('../../middlewares/authenticate');
 
 const router = express.Router();
+const upload = require('../../middlewares/multerConfig');
 
 // Public routes
 
@@ -16,7 +17,7 @@ router.get('/restaurants', (req, res) => {
   authenticate(req, res, () => restaurantController.getRestaurants(req, res));
 });
 
-router.post('/restaurants', (req, res) => {
+router.post('/restaurants', upload.single('image'), (req, res) => {
   req.requiredPermissions = ['CreateRestaurant'];
   authenticate(req, res, () => restaurantController.createRestaurant(req, res));
 });
@@ -31,18 +32,12 @@ router.delete('/restaurants/:id', (req, res) => {
   authenticate(req, res, () => restaurantController.deleteRestaurant(req, res));
 });
 
-router.put('/restaurants/:id', (req, res) => {
+router.put('/restaurants/:id', upload.single('image'), (req, res) => {
   req.requiredPermissions = ['UpdateRestaurant'];
   authenticate(req, res, () => restaurantController.updateRestaurant(req, res));
 });
 
 router.put('/restaurants/:id/status', restaurantController.setRestaurantOpenStatus);
-router.post('/credit-cards', restaurantController.createCreditCard);
-router.get('/restaurants/:id/credit-cards', restaurantController.getCreditCards);
-router.delete('/credit-cards/:id', restaurantController.deleteCreditCard);
-router.post('/discounts', restaurantController.createDiscount);
-router.get('/restaurants/:id/discounts', restaurantController.getDiscounts);
-router.delete('/discounts/:id', restaurantController.deleteDiscount);
-router.get('/restaurants/:id/z-report', restaurantController.getZreportData);
+router.put('/restaurants/:id/active', restaurantController.setRestaurantActiveStatus);
 
 module.exports = router;

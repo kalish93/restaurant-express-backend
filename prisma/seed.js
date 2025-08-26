@@ -95,7 +95,7 @@ async function main() {
     await seedUser(createdRoles[0].id);
     // const createdPermissions = await seedPermissions()
     // await seedRolePermissions(createdRoles[0].id, createdPermissions)
-    await seedCategories()
+    // await seedCategories()
     console.log("Seeded successfully.");
   } catch (error) {
     console.error("Error while seeding:", error);

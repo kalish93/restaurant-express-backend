@@ -71,22 +71,11 @@ async function createOrder(req, res) {
                 await prisma.barOrder.create({
                     data: {
                         orderId: order.id,
-                        stockId: orderItem.menuItem.stockId,
                         quantity: orderItem.quantity,
                         status: OrderStatus.PENDING
                     }
                 });
 
-                if (orderItem.menuItem.stockId) {
-                  await prisma.stock.update({
-                      where: { id: orderItem.menuItem.stockId },
-                      data: {
-                          quantity: {
-                              decrement: orderItem.quantity
-                          }
-                      }
-                  });
-              }
 
                 // Send notification to bar staff
                 for (const user of barUsers) {
@@ -480,19 +469,7 @@ async function updateOrderStatus(req, res) {
                 }
             });
             io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
-            
-            for( const item of  orderToUpdate.items){
-              if (item.menuItem.stockId) {
-                await prisma.stock.update({
-                    where: { id: item.menuItem.stockId },
-                    data: {
-                        quantity: {
-                            increment: item.quantity
-                        }
-                    }
-                });
-            }
-            }
+          
         }
           for (const user of KitchenUsers) {
             await prisma.notification.create({
@@ -549,16 +526,6 @@ async function updateOrderStatus(req, res) {
             return res.status(404).json({ error: 'Order item not found' });
         }
 
-        if(orderItem.menuItem.stockId){
-          await prisma.stock.update({
-            where: {id : orderItem.menuItem.stockId},
-            data: {
-              quantity: {
-                decrement: orderItem.quantity
-            }
-            }
-          })
-        }
 
         // Remove the order item
         await prisma.orderItem.delete({
@@ -627,17 +594,6 @@ async function updateOrderItem(req, res) {
           return res.status(404).json({ error: 'Order item not found' });
       }
 
-      if(orderItem.menuItem.stockId){
-        await prisma.stock.update({
-          where: {id : orderItem.menuItem.stockId},
-          data: {
-            quantity: {
-              decrement: quantityDifference
-          }
-          }
-        })
-      }
-
       // Update the order item
       const updatedOrderItem = await prisma.orderItem.update({
           where: { id: id },
@@ -704,27 +660,6 @@ async function addOrderItem(req, res) {
           return res.status(404).json({ error: 'Order not found' });
       }
 
-      if(order.menuItem?.stockId){
-       const stock = await prisma.stock.findUnique({
-          where: {id: order.menuItem.stockId}
-        })
-
-        if(stock.quantity < quantity){
-          return res.status(403).json({ error: 'You dont have this much amount for the item in the stock.' });
-
-        }else{
-        await prisma.stock.update({
-          where: {id : order.menuItem.stockId},
-          data: {
-            quantity: {
-              decrement: quantityDifference
-          }
-          }
-        })
-      }
-      }
-
-
       // Create a new order item
       const orderItem = await prisma.orderItem.create({
           data: {
@@ -754,7 +689,6 @@ async function addOrderItem(req, res) {
           await prisma.barOrder.create({
               data: {
                   orderId: order.id,
-                  stockId: orderItem.menuItem?.stockId,
                   status: OrderStatus.PENDING
               }
           });

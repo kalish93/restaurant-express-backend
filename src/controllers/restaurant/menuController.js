@@ -16,15 +16,13 @@ async function getMenus(req, res) {
           id : true,
           name : true,
           price : true,
-          currency: true,
-          taxRate: true,
           restaurantId : true,
+          status: true,
           ingredients:true,
           category : true,
           categoryId : true,
           image:true,
           destination: true,
-          stock: true,
         },
        
       });
@@ -48,15 +46,13 @@ async function getMenuByRestaurantId(req, res) {
           id : true,
           name : true,
           price : true,
-          taxRate: true,
-          currency: true,
           restaurantId : true,
           ingredients:true,
+          status: true,
           category : true,
           categoryId : true,
           image:true,
           destination: true,
-          stock: true,
         },
        
       });
@@ -70,7 +66,7 @@ async function getMenuByRestaurantId(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, ingredients , categoryId, stockId, destination, currency, taxRate } = req.body;
+    const { name, price, ingredients , categoryId, destination, status} = req.body;
     const image = req.file ? req.file.filename : null; 
     const restaurantId = req.user.restaurantId;
     if(!restaurantId) {
@@ -98,6 +94,7 @@ async function createMenu(req, res) {
     const menu = await prisma.menuItem.create({
       data: {
         name: name,
+        status: status,
         price: parseFloat(price),
         category: {
           connect: { id: categoryId },
@@ -107,17 +104,9 @@ async function createMenu(req, res) {
           connect: { id: restaurantId },
         },
         image: image,
-        ...(stockId && {
-          stock: {
-            connect: { id: stockId },
-          },
-        }),
         destination: destination,
-        currency: currency,
-        taxRate: taxRate,
       }, include: {
         category: true, 
-        stock: true
       }
     });
     res.json(menu);
@@ -140,10 +129,8 @@ async function getMenu(req, res) {
               name : true,
               price : true, 
               ingredient:true,
-              taxRate: true,
-              currency: true,
-              stock: true,
               isDrink : true,
+              status: true,
               restaurant: {
                 select: {
                     id: true,
@@ -170,7 +157,7 @@ async function getMenu(req, res) {
 async function updateMenu(req, res) {
     try {
       const id = req.params.id;
-      const { name, price, ingredients , categoryId, destination, currency, taxRate} = req.body;
+      const { name, price, ingredients , categoryId, destination, status} = req.body;
       const image = req.file ? req.file.filename : null;
 
       const restaurantId = req.user.restaurantId;
@@ -217,6 +204,7 @@ async function updateMenu(req, res) {
         },
         data: {
           name: name,
+          status: status,
           price: parseFloat(price),
           category: {
             connect: { id: categoryId },
@@ -226,12 +214,9 @@ async function updateMenu(req, res) {
             connect: { id: restaurantId },
           },
           image: image || existingMenu.image,
-          destination: destination,
-          currency: currency, 
-          taxRate: taxRate
+          destination: destination
         }, include: {
           category: true, 
-          stock: true
         }
       });
 
@@ -256,7 +241,7 @@ async function deleteMenu(req, res) {
       });
   
       if (!existingMenu) {
-        return res.status(404).send("Stock not found");
+        return res.status(404).send("Menu Item not found");
       }
 
       if (existingMenu.image) {
