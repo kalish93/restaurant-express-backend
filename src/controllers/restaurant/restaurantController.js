@@ -99,6 +99,7 @@ async function getRestaurant(req, res) {
         tables: true,
         menuItems: true,
         orders: true,
+        qrCodeImage: true,
         users: {
           select: {
             id: true,

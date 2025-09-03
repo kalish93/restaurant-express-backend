@@ -1,6 +1,9 @@
 const prisma = require('../../database');
 const path = require('path');
 const fs = require('fs');
+const QRCode = require("qrcode");
+const { v4: uuidv4 } = require("uuid");
+const BASE_URL = process.env.FRONTEND_BASE_URL;
 
 async function getMenus(req, res) {
   try {
@@ -37,6 +40,7 @@ async function getMenus(req, res) {
 async function getMenuByRestaurantId(req, res) {
   try {
     const restaurantId = req.params.restaurantId;
+    console.log(restaurantId,'iiiiiiiiiiiiiiiiiiiiiiiiiiiii')
 
      const menuItems = await prisma.menuItem.findMany({
       where :{
@@ -303,6 +307,64 @@ async function changeMenuStatus(req, res) {
   }
 }
 
+
+const createQRCodeForMenu = async (req, res) => {
+
+  try {
+    const restaurantId = req.user.restaurantId;
+
+    const url = `${BASE_URL}/menu/${restaurantId}`;
+
+    // Generate the QR code image
+    const qrCodeImage = await QRCode.toDataURL(url);
+
+    // Create a new table with the QR code image included
+    const updatedRestaurant = await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { qrCodeImage },
+    });
+
+    res.status(201).json(updatedRestaurant);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to create QR code" });
+  }
+};
+
+const downloadMenuQrCode = async (req, res) => {
+  const restaurantId = req.user.restaurantId;
+
+  try {
+    // Find the table by ID
+    const restaurant = await prisma.restaurant.findUnique({
+      where: {
+        id: restaurantId,
+      },
+    });
+
+    // Check if QR code image exists for the table
+    if (!restaurant.qrCodeImage) {
+      return res
+        .status(404)
+        .json({ error: "QR code image not found for this menu" });
+    }
+
+    // Convert the base64 QR code image to a buffer
+    const qrCodeBuffer = Buffer.from(restaurant.qrCodeImage.split(",")[1], "base64");
+
+    // Set the appropriate headers and send the QR code image
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=restaurant-qrcode.png`
+    );
+    res.send(qrCodeBuffer);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to retrieve QR code" });
+  }
+};
+
 module.exports = {
     deleteMenu,
     updateMenu,
@@ -310,5 +372,7 @@ module.exports = {
     createMenu,
     getMenus,
     getMenuByRestaurantId,
-    changeMenuStatus
+    changeMenuStatus,
+    createQRCodeForMenu,
+    downloadMenuQrCode
 }
