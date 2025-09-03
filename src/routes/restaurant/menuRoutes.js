@@ -34,5 +34,11 @@ router.put('/menus/:id', upload.single('image') , (req,res)=>{
   authenticate(req,res, ()=>menuController.updateMenu(req,res));
 });
 
+// Change menu status
+router.patch('/menus/:id/status', (req, res) => {
+  req.requiredPermissions = ['UpdateMenu'];  // same permission as update
+  authenticate(req, res, () => menuController.changeMenuStatus(req, res));
+});
+
 
 module.exports = router;

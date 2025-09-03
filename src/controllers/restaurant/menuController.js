@@ -264,11 +264,51 @@ async function deleteMenu(req, res) {
     }
   }  
 
+async function changeMenuStatus(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // Expected values: "AVAILABLE" or "SOLD_OUT"
+    const restaurantId = req.user.restaurantId;
+
+    if (!status || !["AVAILABLE", "SOLD_OUT"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    const existingMenu = await prisma.menuItem.findUnique({
+      where: { id },
+    });
+
+    if (!existingMenu) {
+      return res.status(404).json({ error: "Menu item not found" });
+    }
+
+    const updatedMenu = await prisma.menuItem.update({
+      where: { id, restaurantId },
+      data: { status },
+      include: {
+        category: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json(updatedMenu);
+  } catch (error) {
+    console.error("Error changing menu status:", error);
+    res.status(500).send("Internal Server Error");
+  }
+}
+
 module.exports = {
     deleteMenu,
     updateMenu,
     getMenu,
     createMenu,
     getMenus,
-    getMenuByRestaurantId
+    getMenuByRestaurantId,
+    changeMenuStatus
 }
