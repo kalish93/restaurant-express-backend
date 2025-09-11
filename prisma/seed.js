@@ -46,7 +46,6 @@ const categories = [
   { name: 'Sides' },
   { name: 'Cocktails' },
   { name: 'Wine' },
-  { name: 'Spritz' },
 ];
 
 async function seedCategories() {
@@ -95,7 +94,7 @@ async function main() {
     await seedUser(createdRoles[0].id);
     // const createdPermissions = await seedPermissions()
     // await seedRolePermissions(createdRoles[0].id, createdPermissions)
-    // await seedCategories()
+    await seedCategories()
     console.log("Seeded successfully.");
   } catch (error) {
     console.error("Error while seeding:", error);

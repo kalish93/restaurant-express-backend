@@ -859,7 +859,7 @@ const generateBillForTableOrders = async (req, res) => {
 
   try {
 
-    const {orderIds, cashPayment, giftCardPayment, creditCards, taxAmount} = req.body;
+    const {orderIds, cashPaymentAmount, provider, transferAmount} = req.body;
     
     // Fetch the orders by the given orderIds
     const orders = await prisma.order.findMany({
@@ -925,40 +925,17 @@ const generateBillForTableOrders = async (req, res) => {
       );
     }, 0);
 
-    const discountAmount = orders[0].discountAmount || 0; // Assuming discountAmount is stored in each order
-    const tipAmount = orders[0].tipAmount || 0; // Assuming tipAmount is stored in each order
-
-    // Calculate total after discount
-    const totalAfterDiscount = total - discountAmount;
-
-    // Calculate tax amount
-
-    // Calculate final total
-    const finalTotal = totalAfterDiscount + taxAmount + tipAmount;
-
+   
     // Create a consolidated bill
     const bill = await prisma.bill.create({
       data: {
-        total: finalTotal,
+        total: total,
         orderId: orders[0].id, // Associate it with the first order from the table
-        discountAmount: discountAmount,
-        tipAmount: tipAmount,
-        taxAmount: taxAmount,
-        cashPaymentAmount: parseFloat(cashPayment),
-        giftCardPaymentAmount: parseFloat(giftCardPayment),
-        discountId: orders[0].discountId,
+        cashPaymentAmount: parseFloat(cashPaymentAmount),
+        transferAmount: parseFloat(transferAmount),
+        provider: provider,
       },
     });
-
-    for(const card of creditCards){
-      await prisma.creditCardPayment.create({
-          data:{
-            amount: card.creditPayment,
-            creditCardId: card.creditCardType,
-            billId: bill.id
-          }
-      })
-    }
 
     res.status(201).json({
       message: 'Bill generated successfully for selected orders',

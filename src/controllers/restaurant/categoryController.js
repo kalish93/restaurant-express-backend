@@ -9,11 +9,25 @@ async function getCategories(req, res) {
       return res.status(400).json({ error: "restaurantId is required" });
     }
 
+    let whereClause = {};
+
+    if (restaurantId) {
+      whereClause = {
+        OR: [
+          { restaurantId: restaurantId }, 
+          { restaurantId: null }
+        ]
+      };
+    } else {
+      whereClause = { restaurantId: null };
+    }
+
     const categories = await prisma.category.findMany({
-      where: { restaurantId },
+      where: whereClause,
       select: {
         id: true,
         name: true,
+        restaurantId: true,
         createdAt: true,
         updatedAt: true,
       },
