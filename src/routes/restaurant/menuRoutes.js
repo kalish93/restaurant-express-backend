@@ -34,5 +34,21 @@ router.put('/menus/:id', upload.single('image') , (req,res)=>{
   authenticate(req,res, ()=>menuController.updateMenu(req,res));
 });
 
+// Change menu status
+router.patch('/menus/:id/status', (req, res) => {
+  req.requiredPermissions = ['UpdateMenu'];  // same permission as update
+  authenticate(req, res, () => menuController.changeMenuStatus(req, res));
+});
+
+router.post('/menus/qr-code', (req, res) => {
+  req.requiredPermissions = ['CreateMenu']; 
+  authenticate(req, res, () => menuController.createQRCodeForMenu(req, res));
+});
+
+router.get('/menus/qr-code/download', (req, res) => {
+  req.requiredPermissions = ['GetMenus']; 
+  authenticate(req, res, () => menuController.downloadMenuQrCode(req, res));
+});
+
 
 module.exports = router;

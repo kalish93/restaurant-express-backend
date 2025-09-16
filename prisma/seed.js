@@ -46,7 +46,6 @@ const categories = [
   { name: 'Sides' },
   { name: 'Cocktails' },
   { name: 'Wine' },
-  { name: 'Spritz' },
 ];
 
 async function seedCategories() {

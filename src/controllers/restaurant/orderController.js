@@ -71,22 +71,11 @@ async function createOrder(req, res) {
                 await prisma.barOrder.create({
                     data: {
                         orderId: order.id,
-                        stockId: orderItem.menuItem.stockId,
                         quantity: orderItem.quantity,
                         status: OrderStatus.PENDING
                     }
                 });
 
-                if (orderItem.menuItem.stockId) {
-                  await prisma.stock.update({
-                      where: { id: orderItem.menuItem.stockId },
-                      data: {
-                          quantity: {
-                              decrement: orderItem.quantity
-                          }
-                      }
-                  });
-              }
 
                 // Send notification to bar staff
                 for (const user of barUsers) {
@@ -480,19 +469,7 @@ async function updateOrderStatus(req, res) {
                 }
             });
             io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
-            
-            for( const item of  orderToUpdate.items){
-              if (item.menuItem.stockId) {
-                await prisma.stock.update({
-                    where: { id: item.menuItem.stockId },
-                    data: {
-                        quantity: {
-                            increment: item.quantity
-                        }
-                    }
-                });
-            }
-            }
+          
         }
           for (const user of KitchenUsers) {
             await prisma.notification.create({
@@ -549,16 +526,6 @@ async function updateOrderStatus(req, res) {
             return res.status(404).json({ error: 'Order item not found' });
         }
 
-        if(orderItem.menuItem.stockId){
-          await prisma.stock.update({
-            where: {id : orderItem.menuItem.stockId},
-            data: {
-              quantity: {
-                decrement: orderItem.quantity
-            }
-            }
-          })
-        }
 
         // Remove the order item
         await prisma.orderItem.delete({
@@ -627,17 +594,6 @@ async function updateOrderItem(req, res) {
           return res.status(404).json({ error: 'Order item not found' });
       }
 
-      if(orderItem.menuItem.stockId){
-        await prisma.stock.update({
-          where: {id : orderItem.menuItem.stockId},
-          data: {
-            quantity: {
-              decrement: quantityDifference
-          }
-          }
-        })
-      }
-
       // Update the order item
       const updatedOrderItem = await prisma.orderItem.update({
           where: { id: id },
@@ -704,27 +660,6 @@ async function addOrderItem(req, res) {
           return res.status(404).json({ error: 'Order not found' });
       }
 
-      if(order.menuItem?.stockId){
-       const stock = await prisma.stock.findUnique({
-          where: {id: order.menuItem.stockId}
-        })
-
-        if(stock.quantity < quantity){
-          return res.status(403).json({ error: 'You dont have this much amount for the item in the stock.' });
-
-        }else{
-        await prisma.stock.update({
-          where: {id : order.menuItem.stockId},
-          data: {
-            quantity: {
-              decrement: quantityDifference
-          }
-          }
-        })
-      }
-      }
-
-
       // Create a new order item
       const orderItem = await prisma.orderItem.create({
           data: {
@@ -754,7 +689,6 @@ async function addOrderItem(req, res) {
           await prisma.barOrder.create({
               data: {
                   orderId: order.id,
-                  stockId: orderItem.menuItem?.stockId,
                   status: OrderStatus.PENDING
               }
           });
@@ -925,7 +859,7 @@ const generateBillForTableOrders = async (req, res) => {
 
   try {
 
-    const {orderIds, cashPayment, giftCardPayment, creditCards, taxAmount} = req.body;
+    const {orderIds, cashPaymentAmount, provider, transferAmount} = req.body;
     
     // Fetch the orders by the given orderIds
     const orders = await prisma.order.findMany({
@@ -991,40 +925,17 @@ const generateBillForTableOrders = async (req, res) => {
       );
     }, 0);
 
-    const discountAmount = orders[0].discountAmount || 0; // Assuming discountAmount is stored in each order
-    const tipAmount = orders[0].tipAmount || 0; // Assuming tipAmount is stored in each order
-
-    // Calculate total after discount
-    const totalAfterDiscount = total - discountAmount;
-
-    // Calculate tax amount
-
-    // Calculate final total
-    const finalTotal = totalAfterDiscount + taxAmount + tipAmount;
-
+   
     // Create a consolidated bill
     const bill = await prisma.bill.create({
       data: {
-        total: finalTotal,
+        total: total,
         orderId: orders[0].id, // Associate it with the first order from the table
-        discountAmount: discountAmount,
-        tipAmount: tipAmount,
-        taxAmount: taxAmount,
-        cashPaymentAmount: parseFloat(cashPayment),
-        giftCardPaymentAmount: parseFloat(giftCardPayment),
-        discountId: orders[0].discountId,
+        cashPaymentAmount: parseFloat(cashPaymentAmount),
+        transferAmount: parseFloat(transferAmount),
+        provider: provider,
       },
     });
-
-    for(const card of creditCards){
-      await prisma.creditCardPayment.create({
-          data:{
-            amount: card.creditPayment,
-            creditCardId: card.creditCardType,
-            billId: bill.id
-          }
-      })
-    }
 
     res.status(201).json({
       message: 'Bill generated successfully for selected orders',

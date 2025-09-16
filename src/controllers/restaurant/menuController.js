@@ -1,6 +1,9 @@
 const prisma = require('../../database');
 const path = require('path');
 const fs = require('fs');
+const QRCode = require("qrcode");
+const { v4: uuidv4 } = require("uuid");
+const BASE_URL = process.env.FRONTEND_BASE_URL;
 
 async function getMenus(req, res) {
   try {
@@ -16,15 +19,13 @@ async function getMenus(req, res) {
           id : true,
           name : true,
           price : true,
-          currency: true,
-          taxRate: true,
           restaurantId : true,
+          status: true,
           ingredients:true,
           category : true,
           categoryId : true,
           image:true,
           destination: true,
-          stock: true,
         },
        
       });
@@ -39,6 +40,7 @@ async function getMenus(req, res) {
 async function getMenuByRestaurantId(req, res) {
   try {
     const restaurantId = req.params.restaurantId;
+    console.log(restaurantId,'iiiiiiiiiiiiiiiiiiiiiiiiiiiii')
 
      const menuItems = await prisma.menuItem.findMany({
       where :{
@@ -48,15 +50,13 @@ async function getMenuByRestaurantId(req, res) {
           id : true,
           name : true,
           price : true,
-          taxRate: true,
-          currency: true,
           restaurantId : true,
           ingredients:true,
+          status: true,
           category : true,
           categoryId : true,
           image:true,
           destination: true,
-          stock: true,
         },
        
       });
@@ -70,7 +70,7 @@ async function getMenuByRestaurantId(req, res) {
 
 async function createMenu(req, res) {
   try {
-    const { name, price, ingredients , categoryId, stockId, destination, currency, taxRate } = req.body;
+    const { name, price, ingredients , categoryId, destination, status} = req.body;
     const image = req.file ? req.file.filename : null; 
     const restaurantId = req.user.restaurantId;
     if(!restaurantId) {
@@ -98,6 +98,7 @@ async function createMenu(req, res) {
     const menu = await prisma.menuItem.create({
       data: {
         name: name,
+        status: status,
         price: parseFloat(price),
         category: {
           connect: { id: categoryId },
@@ -107,17 +108,9 @@ async function createMenu(req, res) {
           connect: { id: restaurantId },
         },
         image: image,
-        ...(stockId && {
-          stock: {
-            connect: { id: stockId },
-          },
-        }),
         destination: destination,
-        currency: currency,
-        taxRate: taxRate,
       }, include: {
         category: true, 
-        stock: true
       }
     });
     res.json(menu);
@@ -140,10 +133,8 @@ async function getMenu(req, res) {
               name : true,
               price : true, 
               ingredient:true,
-              taxRate: true,
-              currency: true,
-              stock: true,
               isDrink : true,
+              status: true,
               restaurant: {
                 select: {
                     id: true,
@@ -170,7 +161,7 @@ async function getMenu(req, res) {
 async function updateMenu(req, res) {
     try {
       const id = req.params.id;
-      const { name, price, ingredients , categoryId, destination, currency, taxRate} = req.body;
+      const { name, price, ingredients , categoryId, destination, status} = req.body;
       const image = req.file ? req.file.filename : null;
 
       const restaurantId = req.user.restaurantId;
@@ -217,6 +208,7 @@ async function updateMenu(req, res) {
         },
         data: {
           name: name,
+          status: status,
           price: parseFloat(price),
           category: {
             connect: { id: categoryId },
@@ -226,12 +218,9 @@ async function updateMenu(req, res) {
             connect: { id: restaurantId },
           },
           image: image || existingMenu.image,
-          destination: destination,
-          currency: currency, 
-          taxRate: taxRate
+          destination: destination
         }, include: {
           category: true, 
-          stock: true
         }
       });
 
@@ -256,7 +245,7 @@ async function deleteMenu(req, res) {
       });
   
       if (!existingMenu) {
-        return res.status(404).send("Stock not found");
+        return res.status(404).send("Menu Item not found");
       }
 
       if (existingMenu.image) {
@@ -279,11 +268,111 @@ async function deleteMenu(req, res) {
     }
   }  
 
+async function changeMenuStatus(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // Expected values: "AVAILABLE" or "SOLD_OUT"
+    const restaurantId = req.user.restaurantId;
+
+    if (!status || !["AVAILABLE", "SOLD_OUT"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    const existingMenu = await prisma.menuItem.findUnique({
+      where: { id },
+    });
+
+    if (!existingMenu) {
+      return res.status(404).json({ error: "Menu item not found" });
+    }
+
+    const updatedMenu = await prisma.menuItem.update({
+      where: { id, restaurantId },
+      data: { status },
+      include: {
+        category: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json(updatedMenu);
+  } catch (error) {
+    console.error("Error changing menu status:", error);
+    res.status(500).send("Internal Server Error");
+  }
+}
+
+
+const createQRCodeForMenu = async (req, res) => {
+
+  try {
+    const restaurantId = req.user.restaurantId;
+
+    const url = `${BASE_URL}/menu/${restaurantId}`;
+
+    // Generate the QR code image
+    const qrCodeImage = await QRCode.toDataURL(url);
+
+    // Create a new table with the QR code image included
+    const updatedRestaurant = await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { qrCodeImage },
+    });
+
+    res.status(201).json(updatedRestaurant);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to create QR code" });
+  }
+};
+
+const downloadMenuQrCode = async (req, res) => {
+  const restaurantId = req.user.restaurantId;
+
+  try {
+    // Find the table by ID
+    const restaurant = await prisma.restaurant.findUnique({
+      where: {
+        id: restaurantId,
+      },
+    });
+
+    // Check if QR code image exists for the table
+    if (!restaurant.qrCodeImage) {
+      return res
+        .status(404)
+        .json({ error: "QR code image not found for this menu" });
+    }
+
+    // Convert the base64 QR code image to a buffer
+    const qrCodeBuffer = Buffer.from(restaurant.qrCodeImage.split(",")[1], "base64");
+
+    // Set the appropriate headers and send the QR code image
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=restaurant-qrcode.png`
+    );
+    res.send(qrCodeBuffer);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to retrieve QR code" });
+  }
+};
+
 module.exports = {
     deleteMenu,
     updateMenu,
     getMenu,
     createMenu,
     getMenus,
-    getMenuByRestaurantId
+    getMenuByRestaurantId,
+    changeMenuStatus,
+    createQRCodeForMenu,
+    downloadMenuQrCode
 }

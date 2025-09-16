@@ -1,37 +1,51 @@
 const prisma = require('../../database');
 const bcrypt = require('bcrypt');
+const path = require('path');
+const fs = require('fs');
 
 async function getRestaurants(req, res) {
   try {
     const { pageNumber = 1, pageSize = 10 } = req.query;
-    let totalCount;
+    const skip = (parseInt(pageNumber, 10) - 1) * parseInt(pageSize, 10);
 
-      totalCount = await prisma.restaurant.count();
+    const totalCount = await prisma.restaurant.count();
 
-     const restaurants = await prisma.restaurant.findMany({
-        select: {
+    const restaurants = await prisma.restaurant.findMany({
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        address: true,
+        logo: true,
+        subscription: true,
+        isOpen: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        tables: true,
+        menuItems: true,
+        orders: true,
+        users: {
+          select: {
             id: true,
-            name : true,
-            tables : true, 
-            menuItems: true,
-            isOpen: true,
-            orders : true,
-            users : true,
-            isActive : true,
-            createdAt : true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+          },
         },
-        skip: (pageNumber - 1) * parseInt(pageSize, 10),
-        take: parseInt(pageSize, 10),
-      });
-
-      const totalPages = Math.ceil(totalCount / parseInt(pageSize, 10));
+        categories: true,
+      },
+      skip,
+      take: parseInt(pageSize, 10),
+    });
 
     res.json({
       items: restaurants,
-      totalCount: totalCount,
+      totalCount,
       pageSize: parseInt(pageSize, 10),
       currentPage: parseInt(pageNumber, 10),
-      totalPages: totalPages,
+      totalPages: Math.ceil(totalCount / parseInt(pageSize, 10)),
     });
   } catch (error) {
     console.error("Error retrieving restaurants:", error);
@@ -41,15 +55,20 @@ async function getRestaurants(req, res) {
 
 async function createRestaurant(req, res) {
   try {
-    const { name } = req.body;
+    const { name, phone, address, subscription } = req.body;
+    const image = req.file ? req.file.filename : null; 
 
     if (!name) {
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({ error: "Name is required" });
     }
 
     const restaurant = await prisma.restaurant.create({
       data: {
-        name: name
+        name,
+        phone,
+        address,
+        logo: image,
+        subscription,
       },
     });
 
@@ -61,39 +80,49 @@ async function createRestaurant(req, res) {
 }
 
 async function getRestaurant(req, res) {
-    try {
-      const id  = req.params.id;
-  
-       const restaurant = await prisma.restaurant.findUnique({
-        where:{
-            id: id
-        },
+  try {
+    const id = req.params.id;
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        address: true,
+        logo: true,
+        subscription: true,
+        isOpen: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        tables: true,
+        menuItems: true,
+        orders: true,
+        qrCodeImage: true,
+        users: {
           select: {
-              id: true,
-              name : true,
-              tables : true, 
-              menuItems: true,
-              isOpen: true,
-              orders : true,
-              users: {
-                select: {
-                    id:true,
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                    role: true
-                }
-              },
-              isActive : true,
-              createdAt : true,
-          }
-        });
-    res.json(restaurant);
-    } catch (error) {
-      console.error("Error creating restaurant:", error);
-      res.status(500).send("Internal Server Error");
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+          },
+        },
+        categories: true,
+      },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: "Restaurant not found" });
     }
-}  
+
+    res.json(restaurant);
+  } catch (error) {
+    console.error("Error fetching restaurant:", error);
+    res.status(500).send("Internal Server Error");
+  }
+} 
 
 async function addRestaurantStaff(req, res) {
     try { 
@@ -165,37 +194,44 @@ async function addRestaurantStaff(req, res) {
     }
   }
 
-  async function updateRestaurant(req, res) {
-    try {
-      const id = req.params.id;
-      const { name, isActive } = req.body;
-  
-      if (!name) {
-        return res.status(400).json({ error: "Name is required" });
-      }
-  
-      const restaurant = await prisma.restaurant.findUnique({
-        where: { id: id },
-      });
-  
-      if (!restaurant) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-  
-      const updatedRestaurant = await prisma.restaurant.update({
-        where: { id: id },
-        data: {
-          name: name,
-          isActive: isActive !== undefined ? isActive : restaurant.isActive,
-        },
-      });
-  
-      res.json(updatedRestaurant);
-    } catch (error) {
-      console.error("Error updating restaurant:", error);
-      res.status(500).send("Internal Server Error");
+ async function updateRestaurant(req, res) {
+  try {
+    const id = req.params.id;
+    const { name, phone, address, subscription, isOpen, isActive } = req.body;
+    const image = req.file ? req.file.filename : null;
+
+    const restaurant = await prisma.restaurant.findUnique({ where: { id } });
+    if (!restaurant) {
+      return res.status(404).json({ error: "Restaurant not found" });
     }
-  }  
+
+    if (image && restaurant.logo) {
+            const oldImagePath = path.join(__dirname, '../../public/uploads', restaurant.logo);
+            fs.unlink(oldImagePath, (err) => {
+              if (err) console.error("Error deleting old image:", err);
+            });
+          }
+
+    const updatedRestaurant = await prisma.restaurant.update({
+      where: { id },
+      data: {
+        name: name ?? restaurant.name,
+        phone: phone ?? restaurant.phone,
+        address: address ?? restaurant.address,
+        logo: image || restaurant.logo,
+        subscription: subscription ?? restaurant.subscription,
+        isOpen: isOpen ?? restaurant.isOpen,
+        isActive: isActive ?? restaurant.isActive,
+      },
+    });
+
+    res.json(updatedRestaurant);
+  } catch (error) {
+    console.error("Error updating restaurant:", error);
+    res.status(500).send("Internal Server Error");
+  }
+}
+
 
   async function setRestaurantOpenStatus(req, res) {
     try {
@@ -224,301 +260,32 @@ async function addRestaurantStaff(req, res) {
     }
   }  
 
-  async function createCreditCard(req, res) {
+  async function setRestaurantActiveStatus(req, res) {
     try {
-      const { restaurantId, name } = req.body;
+      const id = req.params.id;
+      const { isActive } = req.body;
   
       const restaurant = await prisma.restaurant.findUnique({
-        where: { id: restaurantId },
+        where: { id: id },
       });
   
       if (!restaurant) {
         return res.status(404).json({ error: "Restaurant not found" });
       }
   
-      const creditCard = await prisma.creditCard.create({
+      const updatedRestaurant = await prisma.restaurant.update({
+        where: { id: id },
         data: {
-          name: name,
-          restaurantId: restaurantId,
+          isActive: isActive,
         },
       });
   
-      res.json(creditCard);
+      res.json(updatedRestaurant);
     } catch (error) {
-      console.error("Error creating card:", error);
+      console.error("Error updating restaurant:", error);
       res.status(500).send("Internal Server Error");
     }
   }  
-
-  async function getCreditCards(req, res) {
-    try {
-      const { id} = req.params;
-  
-      const restaurant = await prisma.restaurant.findUnique({
-        where: { id: id },
-      });
-  
-      if (!restaurant) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-  
-      const creditCards = await prisma.creditCard.findMany({
-        where: {
-          restaurantId: id
-        },
-      });
-  
-      res.json(creditCards);
-    } catch (error) {
-      console.error("Error geting cards:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }  
-
-  async function deleteCreditCard(req, res) {
-    try {
-      const { id} = req.params;
-  
-      const card = await prisma.creditCard.findUnique({
-        where: { id: id },
-      });
-  
-      if (!card) {
-        return res.status(404).json({ error: "Card not found" });
-      }
-  
-      const deletedCard = await prisma.creditCard.delete({
-        where: {
-          id: id
-        },
-      });
-  
-      res.json(deletedCard);
-    } catch (error) {
-      console.error("Error deleting credit card:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }  
-
-  async function createDiscount(req, res) {
-    try {
-      const { restaurantId, name, percentage } = req.body;
-  
-      const restaurant = await prisma.restaurant.findUnique({
-        where: { id: restaurantId },
-      });
-  
-      if (!restaurant) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-  
-      const discount = await prisma.discount.create({
-        data: {
-          name: name,
-          restaurantId: restaurantId,
-          percentage: percentage
-        },
-      });
-  
-      res.json(discount);
-    } catch (error) {
-      console.error("Error creating discount:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }  
-
-  async function getDiscounts(req, res) {
-    try {
-      const { id} = req.params;
-  
-      const restaurant = await prisma.restaurant.findUnique({
-        where: { id: id },
-      });
-  
-      if (!restaurant) {
-        return res.status(404).json({ error: "Restaurant not found" });
-      }
-  
-      const discount = await prisma.discount.findMany({
-        where: {
-          restaurantId: id
-        },
-      });
-  
-      res.json(discount);
-    } catch (error) {
-      console.error("Error geting discounts:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }  
-
-  async function deleteDiscount(req, res) {
-    try {
-      const { id} = req.params;
-  
-      const discount = await prisma.discount.findUnique({
-        where: { id: id },
-      });
-  
-      if (!discount) {
-        return res.status(404).json({ error: "Card not found" });
-      }
-  
-      const deletedDiscount = await prisma.discount.delete({
-        where: {
-          id: id
-        },
-      });
-  
-      res.json(deletedDiscount);
-    } catch (error) {
-      console.error("Error deleting credit discount:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }  
-
-  async function getZreportData(req, res) {
-    try {
-      const { id } = req.params;
-  
-      const today = new Date();
-      const startDate = new Date(today.setHours(0, 0, 0, 0)); // Start of today
-      const endDate = new Date(today.setHours(23, 59, 59, 999));
-  
-      const restaurant = await prisma.restaurant.findUnique({
-        where: {
-          id: id
-        }
-      });
-  
-      if (!restaurant) {
-        return res.status(404).send("Restaurant not found");
-      }
-  
-      const orders = await prisma.order.findMany({
-        where: {
-          restaurantId: id,
-          createdAt: {
-            gte: startDate, 
-            lt: endDate 
-          },
-          status: "PAID" 
-        },
-        include: {
-          items: {
-            include: { menuItem: {include: {category: true}} },
-          },
-          restaurant: true,
-          kitchenOrders: true, 
-          barOrders: true, 
-          table: true,
-          bills:{ include: {
-            creditCardPayments: {
-              include: { card : true}
-            },
-            discount: true
-          }}
-        }
-      });
-
-
-      const totalSales = orders.reduce((acc, order) => {
-        const orderTotal = order.items.reduce((sum, item) => {
-          return sum + (item.quantity * item.menuItem.price);
-        }, 0);
-        acc.total += orderTotal;
-  
-        // Categorize items
-        order.items.forEach(item => {
-          const categoryName = item.menuItem.category.name;
-          const categorySales = item.quantity * item.menuItem.price;
-  
-          if (!acc.categories[categoryName]) {
-            acc.categories[categoryName] = { quantitySold: 0, totalSales: 0 };
-          }
-  
-          acc.categories[categoryName].quantitySold += item.quantity;
-          acc.categories[categoryName].totalSales += categorySales;
-        });
-  
-        return acc;
-      }, { total: 0, categories: {} });
-
-
-      const totalTax = orders.reduce((acc, order) => {
-        if (order.bills.length > 0) {
-          const bill = order.bills[0]; // Assuming one bill per order
-          if (bill && typeof bill.taxAmount !== 'undefined') {
-            return acc + bill.taxAmount; // Add taxAmount if it exists
-          }
-        }
-        return acc; // Always return acc, even if no taxAmount
-      }, 0); // Initialize acc with 0
-      
-
-      console.log(totalTax)
-  
-      const totalPayments = {
-        cash: 0,
-        giftCard: 0,
-        credit: 0,
-      };
-  
-      let totalTips = 0; // Variable to track total tips
-    const creditCardBreakdown = {}; // Object to store credit card breakdown
-    const discounts = {}; // Object to store discount information
-
-
-    orders.forEach(order => {
-      const bill = order.bills[0]; // Assuming each order has one bill
-      if (bill) {
-        totalPayments.cash += bill.cashPaymentAmount || 0;
-        totalPayments.giftCard += bill.giftCardPaymentAmount || 0;
-        totalTips += bill.tipAmount || 0; // Add to total tips
-
-        // Add credit card payments
-        if (bill?.creditCardPayments) {
-          bill.creditCardPayments.forEach(payment => {
-            totalPayments.credit += payment.amount || 0;
-            const cardType = payment.card.name; // Assuming card type is in the `name` field
-            creditCardBreakdown[cardType] = creditCardBreakdown[cardType] || { amount: 0, transactions: 0 };
-            creditCardBreakdown[cardType].amount += payment.amount || 0;
-            creditCardBreakdown[cardType].transactions += 1;
-          });
-        }
-
-        if (bill.discount) {
-          const discountName = bill.discount.name;
-          discounts[discountName] = discounts[discountName] || { count: 0, total: 0 };
-          discounts[discountName].count += 1;
-          discounts[discountName].total += bill.discountAmount; // Assuming there's a total field in the discount
-        }
-      
-      }
-    });
-      // Prepare the response data
-      const responseData = {
-        orders,
-        totalSales: totalSales.total,
-        categorySales: totalSales.categories,
-        totalTax: totalTax,
-        paymentDetails: totalPayments,
-        totalTips: totalTips,
-        creditCardBreakdown: Object.entries(creditCardBreakdown).map(([cardType, details]) => ({
-          cardType,
-          amount: details.amount,
-          transactions: details.transactions
-        })),
-        discounts: discounts
-      };
-  
-      res.json(responseData); // Send the orders as the response
-    } catch (error) {
-      console.error("Error fetching Z-report data:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-  
 
 module.exports = {
     getRestaurants,
@@ -528,11 +295,5 @@ module.exports = {
     deleteRestaurant,
     updateRestaurant, 
     setRestaurantOpenStatus,
-    createCreditCard,
-    deleteCreditCard,
-    getCreditCards,
-    createDiscount,
-    getDiscounts,
-    deleteDiscount,
-    getZreportData
+    setRestaurantActiveStatus
 }
