@@ -4,6 +4,7 @@ const restaurantController = require('../../controllers/restaurant/restaurantCon
 const menuController = require('../../controllers/restaurant/menuController');
 const orderController = require('../../controllers/restaurant/orderController');
 const tableController = require('../../controllers/restaurant/tableController');
+const notificationController = require('../../controllers/restaurant/notificationController');
 
 const authenticate = require('../../middlewares/authenticate');
 
@@ -17,6 +18,9 @@ router.get('/menus/:restaurantId',  menuController.getMenuByRestaurantId);
 router.get('/orders/active/:tableId',  orderController.getActiveOrdersByTableId);
 router.post('/orders',  orderController.createOrder);
 router.get('/tables/:id',  tableController.getTable);
+router.post('/orders/:tableId/request-payment', orderController.requestPaymentByTable);
+router.post('/notifications/call-waiter', notificationController.createCallWaiterNotification);
+
 
 // Routes that require authentication
 router.use(authenticate);
