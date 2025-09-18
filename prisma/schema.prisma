@@ -99,8 +99,8 @@ model Order {
   bills        Bill[]        // Changed to one-to-many relationship
   kitchenOrders KitchenOrder[]
   barOrders    BarOrder[]    // Added BarOrders relation
-  table        Table         @relation(fields: [tableId], references: [id], onDelete: Cascade) // Relation to Table
-  tableId      String        @map("table_id") @db.Uuid
+  table        Table?         @relation(fields: [tableId], references: [id], onDelete: Cascade) // Relation to Table
+  tableId      String?        @map("table_id") @db.Uuid
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 }
@@ -140,7 +140,6 @@ model KitchenOrder {
 
 model BarOrder {
   id          String    @id @default(uuid()) @db.Uuid
-  quantity    Int       // Quantity ordered
   status      OrderStatus
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")

@@ -71,7 +71,7 @@ async function createOrder(req, res) {
                 await prisma.barOrder.create({
                     data: {
                         orderId: order.id,
-                        quantity: orderItem.quantity,
+                        // quantity: orderItem.quantity,
                         status: OrderStatus.PENDING
                     }
                 });
@@ -309,433 +309,856 @@ async function getOrderHistory(req, res) {
   
 
 
-async function updateOrderStatus(req, res) {
-    const { id, newStatus, type } = req.body;
-    const { role } = req.user;
+// async function updateOrderStatus(req, res) {
+//     const { id, newStatus, type } = req.body;
+//     const { role } = req.user;
   
-    const validStatuses = ['PENDING', 'IN_PROGRESS', 'READY', 'SERVED', 'CANCELLED'];
+//     const validStatuses = ['PENDING', 'IN_PROGRESS', 'READY', 'SERVED', 'CANCELLED'];
   
-    if (!validStatuses.includes(newStatus)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
+//     if (!validStatuses.includes(newStatus)) {
+//       return res.status(400).json({ error: 'Invalid status' });
+//     }
 
 
-    const orderToUpdate = await prisma.order.findUnique({
-        where: {id: id},
-        include:{table: true, restaurant: true, items: {
-          include: {menuItem: true}
-        }}
-    })
+//     const orderToUpdate = await prisma.order.findUnique({
+//         where: {id: id},
+//         include:{table: true, restaurant: true, items: {
+//           include: {menuItem: true}
+//         }}
+//     })
 
-    const waiterUsers = await prisma.user.findMany({
-        where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Waiter' } } // Adjust role name as necessary
-    });
+//     const waiterUsers = await prisma.user.findMany({
+//         where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Waiter' } } // Adjust role name as necessary
+//     });
 
-    const BartenderUsers = await prisma.user.findMany({
-        where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
-    });
+//     const BartenderUsers = await prisma.user.findMany({
+//         where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+//     });
   
-    const KitchenUsers = await prisma.user.findMany({
-        where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Kitchen Staff' } } // Adjust role name as necessary
-    });
+//     const KitchenUsers = await prisma.user.findMany({
+//         where: { restaurantId: orderToUpdate.restaurant.id , role: { name: 'Kitchen Staff' } } // Adjust role name as necessary
+//     });
   
-    try {
-      let order;
-      let kitchenOrders = [];
-      let barOrders = [];
+//     try {
+//       let order;
+//       let kitchenOrders = [];
+//       let barOrders = [];
   
-      // Helper function to determine the final order status
-      const determineFinalStatus = (kitchenOrders, barOrders) => {
-        const allKitchenReady = kitchenOrders.every(k => k.status === 'READY');
-        const allKitchenServed = kitchenOrders.every(k => k.status === 'SERVED');
-        const allBarReady = barOrders.every(b => b.status === 'READY');
-        const allBarServed = barOrders.every(b => b.status === 'SERVED');
+//       // Helper function to determine the final order status
+//       const determineFinalStatus = (kitchenOrders, barOrders) => {
+//         const allKitchenReady = kitchenOrders.every(k => k.status === 'READY');
+//         const allKitchenServed = kitchenOrders.every(k => k.status === 'SERVED');
+//         const allBarReady = barOrders.every(b => b.status === 'READY');
+//         const allBarServed = barOrders.every(b => b.status === 'SERVED');
   
-        if (allKitchenServed && allBarServed) return 'SERVED';
-        if (allKitchenReady && allBarReady) return 'READY';
-        if (kitchenOrders.some(k => k.status === 'IN_PROGRESS') || barOrders.some(b => b.status === 'IN_PROGRESS')) return 'IN_PROGRESS';
-        return 'PENDING';
-      };
+//         if (allKitchenServed && allBarServed) return 'SERVED';
+//         if (allKitchenReady && allBarReady) return 'READY';
+//         if (kitchenOrders.some(k => k.status === 'IN_PROGRESS') || barOrders.some(b => b.status === 'IN_PROGRESS')) return 'IN_PROGRESS';
+//         return 'PENDING';
+//       };
 
-      if (role.name === 'Kitchen Staff') {
-        order = await prisma.order.findUnique({ where: { id } });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
+//       if (role.name === 'Kitchen Staff') {
+//         order = await prisma.order.findUnique({ where: { id } });
+//         if (!order) return res.status(404).json({ error: 'Order not found' });
   
-        await prisma.kitchenOrder.updateMany({
-          where: { orderId: id },
-          data: { status: newStatus },
-        });
+//         await prisma.kitchenOrder.updateMany({
+//           where: { orderId: id },
+//           data: { status: newStatus },
+//         });
 
 
-        kitchenOrders = await prisma.kitchenOrder.findMany({
-            where: { orderId: id },
-          });
+//         kitchenOrders = await prisma.kitchenOrder.findMany({
+//             where: { orderId: id },
+//           });
     
-          barOrders = await prisma.barOrder.findMany({
-            where: { orderId: id },
-          });
+//           barOrders = await prisma.barOrder.findMany({
+//             where: { orderId: id },
+//           });
   
-        if(newStatus === OrderStatus.READY){
-            for (const user of waiterUsers) {
-                await prisma.notification.create({
-                    data: {
-                        userId: user.id,
-                        message: `Kitchen order for Table ${orderToUpdate.table.number} is ready.`,
-                        type: 'order',
-                        status: 'unread'
-                    }
-                });
-                io.to(user.socketId).emit('notification', { message: `Kitchen order for Table ${orderToUpdate.table.number} is ready.`, status: 'unread' });
-            }
-        }
+//         if(newStatus === OrderStatus.READY){
+//             for (const user of waiterUsers) {
+//                 await prisma.notification.create({
+//                     data: {
+//                         userId: user.id,
+//                         message: `Kitchen order for Table ${orderToUpdate.table.number} is ready.`,
+//                         type: 'order',
+//                         status: 'unread'
+//                     }
+//                 });
+//                 io.to(user.socketId).emit('notification', { message: `Kitchen order for Table ${orderToUpdate.table.number} is ready.`, status: 'unread' });
+//             }
+//         }
   
-      } else if (role.name === 'Bartender') {
-        order = await prisma.order.findUnique({ where: { id } });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
+//       } else if (role.name === 'Bartender') {
+//         order = await prisma.order.findUnique({ where: { id } });
+//         if (!order) return res.status(404).json({ error: 'Order not found' });
   
-        await prisma.barOrder.updateMany({
-          where: { orderId: id },
-          data: { status: newStatus },
-        });
+//         await prisma.barOrder.updateMany({
+//           where: { orderId: id },
+//           data: { status: newStatus },
+//         });
   
 
-        kitchenOrders = await prisma.kitchenOrder.findMany({
-            where: { orderId: id },
-          });
+//         kitchenOrders = await prisma.kitchenOrder.findMany({
+//             where: { orderId: id },
+//           });
     
-          barOrders = await prisma.barOrder.findMany({
-            where: { orderId: id },
-          });
+//           barOrders = await prisma.barOrder.findMany({
+//             where: { orderId: id },
+//           });
 
-          if(newStatus === OrderStatus.READY){
-            for (const user of waiterUsers) {
-                await prisma.notification.create({
-                    data: {
-                        userId: user.id,
-                        message: `Bar order for Table ${orderToUpdate.table.number} is ready.`,
-                        type: 'order',
-                        status: 'unread'
-                    }
-                });
-                io.to(user.socketId).emit('notification', { message: `Bar order for Table ${orderToUpdate.table.number} is ready.`, status: 'unread' });
-            }
-        }
+//           if(newStatus === OrderStatus.READY){
+//             for (const user of waiterUsers) {
+//                 await prisma.notification.create({
+//                     data: {
+//                         userId: user.id,
+//                         message: `Bar order for Table ${orderToUpdate.table.number} is ready.`,
+//                         type: 'order',
+//                         status: 'unread'
+//                     }
+//                 });
+//                 io.to(user.socketId).emit('notification', { message: `Bar order for Table ${orderToUpdate.table.number} is ready.`, status: 'unread' });
+//             }
+//         }
   
-      } else if (role.name === 'Waiter' || role.name === 'Restaurant Manager') {
-        order = await prisma.order.findUnique({
-          where: { id },
-          include: {
-            kitchenOrders: true,
-            barOrders: true,
-          },
-        });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
+//       } else if (role.name === 'Waiter' || role.name === 'Restaurant Manager') {
+//         order = await prisma.order.findUnique({
+//           where: { id },
+//           include: {
+//             kitchenOrders: true,
+//             barOrders: true,
+//           },
+//         });
+//         if (!order) return res.status(404).json({ error: 'Order not found' });
 
-        if(type === 'Kitchen'){
-            await prisma.kitchenOrder.updateMany({
-                where: { orderId: id },
-                data: { status: newStatus },
-              });
-        }else if(type === 'Bar'){
-            await prisma.barOrder.updateMany({
-                where: { orderId: id },
-                data: { status: newStatus },
-              });
-        }else{
-            await prisma.order.update({
-                where: { id },
-                data: { status: newStatus },
-              });
+//         if(type === 'Kitchen'){
+//             await prisma.kitchenOrder.updateMany({
+//                 where: { orderId: id },
+//                 data: { status: newStatus },
+//               });
+//         }else if(type === 'Bar'){
+//             await prisma.barOrder.updateMany({
+//                 where: { orderId: id },
+//                 data: { status: newStatus },
+//               });
+//         }else{
+//             await prisma.order.update({
+//                 where: { id },
+//                 data: { status: newStatus },
+//               });
 
              
-                await prisma.kitchenOrder.updateMany({
-                  where: { orderId: id },
-                  data: { status: newStatus },
-                });
-                await prisma.barOrder.updateMany({
-                  where: { orderId: id },
-                  data: { status: newStatus },
-                });
-        }
+//                 await prisma.kitchenOrder.updateMany({
+//                   where: { orderId: id },
+//                   data: { status: newStatus },
+//                 });
+//                 await prisma.barOrder.updateMany({
+//                   where: { orderId: id },
+//                   data: { status: newStatus },
+//                 });
+//         }
 
-        if(newStatus === OrderStatus.CANCELLED){
-          for (const user of BartenderUsers) {
-            await prisma.notification.create({
-                data: {
-                    userId: user.id,
-                    message: `Order for Table ${orderToUpdate.table.number} has been canceled.`,
-                    type: 'order',
-                    status: 'unread'
-                }
-            });
-            io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
+//         if(newStatus === OrderStatus.CANCELLED){
+//           for (const user of BartenderUsers) {
+//             await prisma.notification.create({
+//                 data: {
+//                     userId: user.id,
+//                     message: `Order for Table ${orderToUpdate.table.number} has been canceled.`,
+//                     type: 'order',
+//                     status: 'unread'
+//                 }
+//             });
+//             io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
           
-        }
-          for (const user of KitchenUsers) {
-            await prisma.notification.create({
-                data: {
-                    userId: user.id,
-                    message: `Order for Table ${orderToUpdate.table.number} has been canceled.`,
-                    type: 'order',
-                    status: 'unread'
-                }
-            });
-            io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
-        }
-        }
-        await prisma.table.update({
-          where: { id: orderToUpdate.table.id },
-          data: { status: 'AVAILABLE' } // adjust value based on your enum/string values
-        });
+//         }
+//           for (const user of KitchenUsers) {
+//             await prisma.notification.create({
+//                 data: {
+//                     userId: user.id,
+//                     message: `Order for Table ${orderToUpdate.table.number} has been canceled.`,
+//                     type: 'order',
+//                     status: 'unread'
+//                 }
+//             });
+//             io.to(user.socketId).emit('notification', { message: `Order for Table ${orderToUpdate.table.number} has been canceled.`, status: 'unread' });
+//         }
+//         }
+//         await prisma.table.update({
+//           where: { id: orderToUpdate.table.id },
+//           data: { status: 'AVAILABLE' } // adjust value based on your enum/string values
+//         });
        
-      } else {
-        return res.status(403).json({ error: 'You do not have permission to update this order' });
-      }
+//       } else {
+//         return res.status(403).json({ error: 'You do not have permission to update this order' });
+//       }
   
-      // Determine the final status based on sub-orders
-      const finalStatus = determineFinalStatus(kitchenOrders, barOrders);
+//       // Determine the final status based on sub-orders
+//       const finalStatus = determineFinalStatus(kitchenOrders, barOrders);
      
-       if(kitchenOrders.length > 0 || barOrders.length > 0){
-        await prisma.order.update({
-            where: { id: id },
-            data: { status: finalStatus },
-          });
-       }
+//        if(kitchenOrders.length > 0 || barOrders.length > 0){
+//         await prisma.order.update({
+//             where: { id: id },
+//             data: { status: finalStatus },
+//           });
+//        }
       
   
-      return res.status(200).json(order);
-    } catch (error) {
-      console.error('Error updating order status:', error.message);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
+//       return res.status(200).json(order);
+//     } catch (error) {
+//       console.error('Error updating order status:', error.message);
+//       return res.status(500).json({ error: 'Internal server error' });
+//     }
+//   }
+
+function formatOrderLabel(order) {
+  // Returns a human friendly label to use in notifications
+  if (!order) return 'Order';
+  const numberPart = order.number ? `Order #${order.number}` : null;
+  if (order.table) {
+    return numberPart ? `Table ${order.table.number} (${numberPart})` : `Table ${order.table.number}`;
+  }
+  if (numberPart) return numberPart;
+  return `Order ${order.id?.slice ? order.id.slice(0, 8) : order.id}`;
+}
+
+async function updateOrderStatus(req, res) {
+  const { id, newStatus, type } = req.body;
+  const { role } = req.user;
+
+  const validStatuses = [
+    'PENDING',
+    'IN_PROGRESS',
+    'READY',
+    'SERVED',
+    'CANCELLED',
+    'PAYMENT_REQUESTED',
+    'PAID',
+  ];
+
+  if (!validStatuses.includes(newStatus)) {
+    return res.status(400).json({ error: 'Invalid status' });
   }
 
-  async function removeOrderItem(req, res) {
+  try {
+    const orderToUpdate = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        table: true,
+        restaurant: true,
+        items: { include: { menuItem: true } },
+        kitchenOrders: true,
+        barOrders: true,
+      },
+    });
+
+    if (!orderToUpdate) return res.status(404).json({ error: 'Order not found' });
+
+    const label = formatOrderLabel(orderToUpdate);
+
+    // Find users to notify
+    const waiterUsers = await prisma.user.findMany({
+      where: { restaurantId: orderToUpdate.restaurant.id, role: { name: 'Waiter' } },
+    });
+    const bartenderUsers = await prisma.user.findMany({
+      where: { restaurantId: orderToUpdate.restaurant.id, role: { name: 'Bartender' } },
+    });
+    const kitchenUsers = await prisma.user.findMany({
+      where: { restaurantId: orderToUpdate.restaurant.id, role: { name: 'Kitchen Staff' } },
+    });
+
+    const determineFinalStatus = (kitchenOrders, barOrders) => {
+      const allKitchenReady = kitchenOrders.length > 0 ? kitchenOrders.every(k => k.status === 'READY') : true;
+      const allKitchenServed = kitchenOrders.length > 0 ? kitchenOrders.every(k => k.status === 'SERVED') : true;
+      const allBarReady = barOrders.length > 0 ? barOrders.every(b => b.status === 'READY') : true;
+      const allBarServed = barOrders.length > 0 ? barOrders.every(b => b.status === 'SERVED') : true;
+
+      if (allKitchenServed && allBarServed) return 'SERVED';
+      if (allKitchenReady && allBarReady) return 'READY';
+      if (kitchenOrders.some(k => k.status === 'IN_PROGRESS') || barOrders.some(b => b.status === 'IN_PROGRESS'))
+        return 'IN_PROGRESS';
+      return 'PENDING';
+    };
+
+    let kitchenOrders = [];
+    let barOrders = [];
+
+    // === ROLE-BASED UPDATES ===
+    if (role.name === 'Kitchen Staff') {
+      await prisma.kitchenOrder.updateMany({
+        where: { orderId: id },
+        data: { status: newStatus },
+      });
+      kitchenOrders = await prisma.kitchenOrder.findMany({ where: { orderId: id } });
+      barOrders = await prisma.barOrder.findMany({ where: { orderId: id } });
+
+      if (newStatus === OrderStatus.READY) {
+        const msg = `Kitchen items for ${label} are ready.`;
+        for (const u of waiterUsers) {
+          await prisma.notification.create({ data: { userId: u.id, message: msg, type: 'order', status: 'unread' } });
+          if (u.socketId) io.to(u.socketId).emit('notification', { message: msg, status: 'unread' });
+        }
+      }
+
+    } else if (role.name === 'Bartender') {
+      await prisma.barOrder.updateMany({
+        where: { orderId: id },
+        data: { status: newStatus },
+      });
+      kitchenOrders = await prisma.kitchenOrder.findMany({ where: { orderId: id } });
+      barOrders = await prisma.barOrder.findMany({ where: { orderId: id } });
+
+      if (newStatus === OrderStatus.READY) {
+        const msg = `Bar items for ${label} are ready.`;
+        for (const u of waiterUsers) {
+          await prisma.notification.create({ data: { userId: u.id, message: msg, type: 'order', status: 'unread' } });
+          if (u.socketId) io.to(u.socketId).emit('notification', { message: msg, status: 'unread' });
+        }
+      }
+
+    } else if (role.name === 'Waiter' || role.name === 'Restaurant Manager') {
+      if (type === 'Kitchen') {
+        await prisma.kitchenOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
+      } else if (type === 'Bar') {
+        await prisma.barOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
+      } else {
+        await prisma.order.update({ where: { id }, data: { status: newStatus } });
+        await prisma.kitchenOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
+        await prisma.barOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
+      }
+
+      kitchenOrders = await prisma.kitchenOrder.findMany({ where: { orderId: id } });
+      barOrders = await prisma.barOrder.findMany({ where: { orderId: id } });
+
+      // Special handling for CANCELLED orders
+      if (newStatus === OrderStatus.CANCELLED) {
+        const msg = `Order for ${label} has been canceled.`;
+        for (const u of bartenderUsers) {
+          await prisma.notification.create({ data: { userId: u.id, message: msg, type: 'order', status: 'unread' } });
+          if (u.socketId) io.to(u.socketId).emit('notification', { message: msg, status: 'unread' });
+        }
+        for (const u of kitchenUsers) {
+          await prisma.notification.create({ data: { userId: u.id, message: msg, type: 'order', status: 'unread' } });
+          if (u.socketId) io.to(u.socketId).emit('notification', { message: msg, status: 'unread' });
+        }
+
+        // Ensure all suborders are marked cancelled too
+        await prisma.kitchenOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
+        await prisma.barOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
+      }
+
+      if (orderToUpdate.table && [OrderStatus.SERVED, OrderStatus.CANCELLED, OrderStatus.PAID].includes(newStatus)) {
+        await prisma.table.update({
+          where: { id: orderToUpdate.table.id },
+          data: { status: TableStatus.AVAILABLE },
+        });
+      }
+    } else {
+      return res.status(403).json({ error: 'You do not have permission to update this order' });
+    }
+
+    // === FINAL STATUS LOGIC ===
+    if (![OrderStatus.CANCELLED, OrderStatus.PAID, OrderStatus.SERVED].includes(newStatus)) {
+      const finalStatus = determineFinalStatus(kitchenOrders, barOrders);
+      if ((kitchenOrders.length > 0 || barOrders.length > 0) && finalStatus) {
+        await prisma.order.update({ where: { id }, data: { status: finalStatus } });
+      }
+
+      if (finalStatus === 'READY') {
+        const msg = `${label} is ready.`;
+        for (const u of waiterUsers) {
+          await prisma.notification.create({ data: { userId: u.id, message: msg, type: 'order', status: 'unread' } });
+          if (u.socketId) io.to(u.socketId).emit('notification', { message: msg, status: 'unread' });
+        }
+      }
+      if (finalStatus === 'SERVED') {
+        const msg = `${label} has been served.`;
+        for (const u of waiterUsers) {
+          await prisma.notification.create({ data: { userId: u.id, message: msg, type: 'order', status: 'unread' } });
+          if (u.socketId) io.to(u.socketId).emit('notification', { message: msg, status: 'unread' });
+        }
+      }
+    }
+
+    const updatedOrder = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        table: true,
+        restaurant: true,
+        items: { include: { menuItem: true } },
+        kitchenOrders: true,
+        barOrders: true,
+      },
+    });
+
+    return res.status(200).json(updatedOrder);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+//   async function removeOrderItem(req, res) {
+//     try {
+//         const id  = req.params.id;
+
+//         // Find the order item to delete
+//         const orderItem = await prisma.orderItem.findUnique({
+//             where: { id: id },
+//             include: { order: {
+//               include: {restaurant: true, table: true}
+//             } , menuItem: true}
+//         });
+
+//         if (!orderItem) {
+//             return res.status(404).json({ error: 'Order item not found' });
+//         }
+
+
+//         // Remove the order item
+//         await prisma.orderItem.delete({
+//             where: { id: id }
+//         });
+
+//         const BartenderUsers = await prisma.user.findMany({
+//           where: { restaurantId: orderItem.order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+//       });
+
+//         const KitchenUsers = await prisma.user.findMany({
+//           where: { restaurantId: orderItem.order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+//       });
+
+//         if(orderItem.menuItem.destination === 'KITCHEN'){
+//           for (const user of KitchenUsers) {
+//             await prisma.notification.create({
+//                 data: {
+//                     userId: user.id,
+//                     message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`,
+//                     type: 'order',
+//                     status: 'unread'
+//                 }
+//             });
+//             io.to(user.socketId).emit('notification', { message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`, status: 'unread' });
+//         }
+//         }else{
+//           for (const user of BartenderUsers) {
+//             await prisma.notification.create({
+//                 data: {
+//                     userId: user.id,
+//                     message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`,
+//                     type: 'order',
+//                     status: 'unread'
+//                 }
+//             });
+//             io.to(user.socketId).emit('notification', { message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`, status: 'unread' });
+//         }
+//         }
+
+//         return res.status(200).json({ message: 'Order item removed successfully' });
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({ error: 'An error occurred while removing the order item.' });
+//     }
+// }
+async function removeOrderItem(req, res) {
     try {
-        const id  = req.params.id;
+        const id = req.params.id;
 
         // Find the order item to delete
         const orderItem = await prisma.orderItem.findUnique({
-            where: { id: id },
-            include: { order: {
-              include: {restaurant: true, table: true}
-            } , menuItem: true}
+            where: { id },
+            include: {
+                order: {
+                    include: { restaurant: true, table: true }
+                },
+                menuItem: true
+            }
         });
 
         if (!orderItem) {
             return res.status(404).json({ error: 'Order item not found' });
         }
 
-
         // Remove the order item
         await prisma.orderItem.delete({
-            where: { id: id }
+            where: { id }
         });
 
         const BartenderUsers = await prisma.user.findMany({
-          where: { restaurantId: orderItem.order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
-      });
+            where: {
+                restaurantId: orderItem.order.restaurant.id,
+                role: { name: 'Bartender' }
+            }
+        });
 
         const KitchenUsers = await prisma.user.findMany({
-          where: { restaurantId: orderItem.order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
-      });
+            where: {
+                restaurantId: orderItem.order.restaurant.id,
+                role: { name: 'Kitchen Staff' }
+            }
+        });
 
-        if(orderItem.menuItem.destination === 'KITCHEN'){
-          for (const user of KitchenUsers) {
-            await prisma.notification.create({
-                data: {
-                    userId: user.id,
-                    message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`,
-                    type: 'order',
-                    status: 'unread'
-                }
-            });
-            io.to(user.socketId).emit('notification', { message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`, status: 'unread' });
-        }
-        }else{
-          for (const user of BartenderUsers) {
-            await prisma.notification.create({
-                data: {
-                    userId: user.id,
-                    message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`,
-                    type: 'order',
-                    status: 'unread'
-                }
-            });
-            io.to(user.socketId).emit('notification', { message: `An item "${orderItem.menuItem.name}" has been removed from the order of table ${orderItem.order.table.name} has been removed.`, status: 'unread' });
-        }
+        // Choose correct label for notification (table or order number)
+        const orderLabel = orderItem.order.table
+            ? `Table ${orderItem.order.table.name || orderItem.order.table.number}`
+            : `Order #${orderItem.order.orderNumber}`;
+
+        const message = `An item "${orderItem.menuItem.name}" has been removed from the order of ${orderLabel}.`;
+
+        if (orderItem.menuItem.destination === 'KITCHEN') {
+            for (const user of KitchenUsers) {
+                await prisma.notification.create({
+                    data: {
+                        userId: user.id,
+                        message,
+                        type: 'order',
+                        status: 'unread'
+                    }
+                });
+                io.to(user.socketId).emit('notification', { message, status: 'unread' });
+            }
+        } else {
+            for (const user of BartenderUsers) {
+                await prisma.notification.create({
+                    data: {
+                        userId: user.id,
+                        message,
+                        type: 'order',
+                        status: 'unread'
+                    }
+                });
+                io.to(user.socketId).emit('notification', { message, status: 'unread' });
+            }
         }
 
         return res.status(200).json({ message: 'Order item removed successfully' });
     } catch (error) {
-        console.error(error);
+        console.error('Error removing order item:', error);
         return res.status(500).json({ error: 'An error occurred while removing the order item.' });
     }
 }
 
 
-async function updateOrderItem(req, res) {
+// async function updateOrderItem(req, res) {
+//   try {
+//       const { id, quantity, specialInstructions } = req.body;
+
+//       // Find the order item to update
+//       const orderItem = await prisma.orderItem.findUnique({
+//           where: { id: id },
+//           include: { order: {
+//             include:{
+//               restaurant: true,
+//               table: true
+//             }
+//           } , menuItem: true}
+//       });
+
+//       const quantityDifference = orderItem.quantity - quantity;
+//       if (!orderItem) {
+//           return res.status(404).json({ error: 'Order item not found' });
+//       }
+
+//       // Update the order item
+//       const updatedOrderItem = await prisma.orderItem.update({
+//           where: { id: id },
+//           data: {
+//               quantity: parseInt(quantity),
+//               specialInstructions: specialInstructions || ''
+//           }
+//       });
+
+//       const BartenderUsers = await prisma.user.findMany({
+//         where: { restaurantId: orderItem.order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+//     });
+
+//       const KitchenUsers = await prisma.user.findMany({
+//         where: { restaurantId: orderItem.order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+//     });
+
+//       if(orderItem.menuItem.destination === 'KITCHEN'){
+//         for (const user of KitchenUsers) {
+//           await prisma.notification.create({
+//               data: {
+//                   userId: user.id,
+//                   message: `The order of table ${orderItem.order.table.name} has been updated.`,
+//                   type: 'order',
+//                   status: 'unread'
+//               }
+//           });
+//           io.to(user.socketId).emit('notification', { message: `The order of table ${orderItem.order.table.name} has been updated.`, status: 'unread' });
+//       }
+//       }else{
+//         for (const user of BartenderUsers) {
+//           await prisma.notification.create({
+//               data: {
+//                   userId: user.id,
+//                   message: `The order of table ${orderItem.order.table.name} has been updated.`,
+//                   type: 'order',
+//                   status: 'unread'
+//               }
+//           });
+//           io.to(user.socketId).emit('notification', { message: `The order of table ${orderItem.order.table.name} has been updated.`, status: 'unread' });
+//       }
+//       }
+
+
+//       return res.status(200).json(updatedOrderItem);
+//   } catch (error) {
+//       console.error(error);
+//       return res.status(500).json({ error: 'An error occurred while updating the order item.' });
+//   }
+// }
+  async function updateOrderItem(req, res) {
   try {
-      const { id, quantity, specialInstructions } = req.body;
+    const { id, quantity, specialInstructions } = req.body;
 
-      // Find the order item to update
-      const orderItem = await prisma.orderItem.findUnique({
-          where: { id: id },
-          include: { order: {
-            include:{
-              restaurant: true,
-              table: true
-            }
-          } , menuItem: true}
-      });
-
-      const quantityDifference = orderItem.quantity - quantity;
-      if (!orderItem) {
-          return res.status(404).json({ error: 'Order item not found' });
-      }
-
-      // Update the order item
-      const updatedOrderItem = await prisma.orderItem.update({
-          where: { id: id },
-          data: {
-              quantity: parseInt(quantity),
-              specialInstructions: specialInstructions || ''
+    // Find the order item to update
+    const orderItem = await prisma.orderItem.findUnique({
+      where: { id },
+      include: {
+        order: {
+          include: {
+            restaurant: true,
+            table: true
           }
-      });
-
-      const BartenderUsers = await prisma.user.findMany({
-        where: { restaurantId: orderItem.order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+        },
+        menuItem: true
+      }
     });
 
-      const KitchenUsers = await prisma.user.findMany({
-        where: { restaurantId: orderItem.order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+    if (!orderItem) {
+      return res.status(404).json({ error: 'Order item not found' });
+    }
+
+    const quantityDifference = orderItem.quantity - quantity;
+
+    // Update the order item
+    const updatedOrderItem = await prisma.orderItem.update({
+      where: { id },
+      data: {
+        quantity: parseInt(quantity),
+        specialInstructions: specialInstructions || ''
+      }
     });
 
-      if(orderItem.menuItem.destination === 'KITCHEN'){
-        for (const user of KitchenUsers) {
-          await prisma.notification.create({
-              data: {
-                  userId: user.id,
-                  message: `The order of table ${orderItem.order.table.name} has been updated.`,
-                  type: 'order',
-                  status: 'unread'
-              }
-          });
-          io.to(user.socketId).emit('notification', { message: `The order of table ${orderItem.order.table.name} has been updated.`, status: 'unread' });
+    const BartenderUsers = await prisma.user.findMany({
+      where: {
+        restaurantId: orderItem.order.restaurant.id,
+        role: { name: 'Bartender' }
       }
-      }else{
-        for (const user of BartenderUsers) {
-          await prisma.notification.create({
-              data: {
-                  userId: user.id,
-                  message: `The order of table ${orderItem.order.table.name} has been updated.`,
-                  type: 'order',
-                  status: 'unread'
-              }
-          });
-          io.to(user.socketId).emit('notification', { message: `The order of table ${orderItem.order.table.name} has been updated.`, status: 'unread' });
-      }
-      }
+    });
 
+    const KitchenUsers = await prisma.user.findMany({
+      where: {
+        restaurantId: orderItem.order.restaurant.id,
+        role: { name: 'Kitchen Staff' }
+      }
+    });
 
-      return res.status(200).json(updatedOrderItem);
+    // ✅ Use table name/number if available, otherwise use order number
+    const orderLabel = orderItem.order.table
+      ? `Table ${orderItem.order.table.name || orderItem.order.table.number}`
+      : `Order #${orderItem.order.orderNumber}`;
+
+    const message = `The order of ${orderLabel} has been updated.`;
+
+    if (orderItem.menuItem.destination === 'KITCHEN') {
+      for (const user of KitchenUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: user.id,
+            message,
+            type: 'order',
+            status: 'unread'
+          }
+        });
+        io.to(user.socketId).emit('notification', { message, status: 'unread' });
+      }
+    } else {
+      for (const user of BartenderUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: user.id,
+            message,
+            type: 'order',
+            status: 'unread'
+          }
+        });
+        io.to(user.socketId).emit('notification', { message, status: 'unread' });
+      }
+    }
+
+    return res.status(200).json(updatedOrderItem);
   } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'An error occurred while updating the order item.' });
+    console.error('Error updating order item:', error);
+    return res.status(500).json({ error: 'An error occurred while updating the order item.' });
   }
 }
-  
+
+
+// async function addOrderItem(req, res) {
+//   try {
+//       const { orderId, menuItemId, quantity, specialInstructions } = req.body;
+
+//       // Fetch the order to check if it's a bar or kitchen order
+//       const order = await prisma.order.findUnique({
+//           where: { id: orderId },
+//           include: { items: { include: { menuItem: true } }, restaurant: true, table: true }
+//       });
+
+//       if (!order) {
+//           return res.status(404).json({ error: 'Order not found' });
+//       }
+
+//       // Create a new order item
+//       const orderItem = await prisma.orderItem.create({
+//           data: {
+//               quantity: parseInt(quantity),
+//               specialInstructions: specialInstructions || '',
+//               menuItem: {
+//                   connect: { id: menuItemId }
+//               },
+//               order: {
+//                 connect: { id : orderId}
+//               }
+//           },
+//           include: {
+//               menuItem: true,
+//           }
+//       });
+
+//       // Check if the item is for the kitchen or bar and handle accordingly
+//       if (orderItem.menuItem.destination === 'KITCHEN') {
+//           await prisma.kitchenOrder.create({
+//               data: {
+//                   orderId: order.id,
+//                   status: OrderStatus.PENDING
+//               }
+//           });
+//       } else if (orderItem.menuItem.destination === 'BAR') {
+//           await prisma.barOrder.create({
+//               data: {
+//                   orderId: order.id,
+//                   status: OrderStatus.PENDING
+//               }
+//           });
+//       }
+      
+
+//       const BartenderUsers = await prisma.user.findMany({
+//         where: { restaurantId: order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+//     });
+
+//       const KitchenUsers = await prisma.user.findMany({
+//         where: { restaurantId: order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+//     });
+
+//       if(orderItem.menuItem.destination === 'KITCHEN'){
+//         for (const user of KitchenUsers) {
+//           await prisma.notification.create({
+//               data: {
+//                   userId: user.id,
+//                   message: `The order of table ${order.table.name} has been updated.`,
+//                   type: 'order',
+//                   status: 'unread'
+//               }
+//           });
+//           io.to(user.socketId).emit('notification', { message: `The order of table ${order.table.name} has been updated.`, status: 'unread' });
+//       }
+//       }else{
+//         for (const user of BartenderUsers) {
+//           await prisma.notification.create({
+//               data: {
+//                   userId: user.id,
+//                   message: `The order of table ${order.table.name} has been updated.`,
+//                   type: 'order',
+//                   status: 'unread'
+//               }
+//           });
+//           io.to(user.socketId).emit('notification', { message: `The order of table ${order.table.name} has been updated.`, status: 'unread' });
+//       }
+//       }
+
+//       return res.status(201).json(orderItem);
+//   } catch (error) {
+//       console.error(error);
+//       return res.status(500).json({ error: 'An error occurred while adding the order item.' });
+//   }
+// }
 
 async function addOrderItem(req, res) {
   try {
-      const { orderId, menuItemId, quantity, specialInstructions } = req.body;
+    const { orderId, menuItemId, quantity, specialInstructions } = req.body;
 
-      // Fetch the order to check if it's a bar or kitchen order
-      const order = await prisma.order.findUnique({
-          where: { id: orderId },
-          include: { items: { include: { menuItem: true } }, restaurant: true, table: true }
-      });
-
-      if (!order) {
-          return res.status(404).json({ error: 'Order not found' });
-      }
-
-      // Create a new order item
-      const orderItem = await prisma.orderItem.create({
-          data: {
-              quantity: parseInt(quantity),
-              specialInstructions: specialInstructions || '',
-              menuItem: {
-                  connect: { id: menuItemId }
-              },
-              order: {
-                connect: { id : orderId}
-              }
-          },
-          include: {
-              menuItem: true,
-          }
-      });
-
-      // Check if the item is for the kitchen or bar and handle accordingly
-      if (orderItem.menuItem.destination === 'KITCHEN') {
-          await prisma.kitchenOrder.create({
-              data: {
-                  orderId: order.id,
-                  status: OrderStatus.PENDING
-              }
-          });
-      } else if (orderItem.menuItem.destination === 'BAR') {
-          await prisma.barOrder.create({
-              data: {
-                  orderId: order.id,
-                  status: OrderStatus.PENDING
-              }
-          });
-      }
-      
-
-      const BartenderUsers = await prisma.user.findMany({
-        where: { restaurantId: order.restaurant.id , role: { name: 'Bartender' } } // Adjust role name as necessary
+    // Fetch the order to check if it's a bar or kitchen order
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { menuItem: true } }, restaurant: true, table: true }
     });
 
-      const KitchenUsers = await prisma.user.findMany({
-        where: { restaurantId: order.restaurant.id , role: { name: "Kitchen Staff" } } // Adjust role name as necessary
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Create a new order item
+    const orderItem = await prisma.orderItem.create({
+      data: {
+        quantity: parseInt(quantity),
+        specialInstructions: specialInstructions || '',
+        menuItem: { connect: { id: menuItemId } },
+        order: { connect: { id: orderId } }
+      },
+      include: { menuItem: true }
     });
 
-      if(orderItem.menuItem.destination === 'KITCHEN'){
-        for (const user of KitchenUsers) {
-          await prisma.notification.create({
-              data: {
-                  userId: user.id,
-                  message: `The order of table ${order.table.name} has been updated.`,
-                  type: 'order',
-                  status: 'unread'
-              }
-          });
-          io.to(user.socketId).emit('notification', { message: `The order of table ${order.table.name} has been updated.`, status: 'unread' });
-      }
-      }else{
-        for (const user of BartenderUsers) {
-          await prisma.notification.create({
-              data: {
-                  userId: user.id,
-                  message: `The order of table ${order.table.name} has been updated.`,
-                  type: 'order',
-                  status: 'unread'
-              }
-          });
-          io.to(user.socketId).emit('notification', { message: `The order of table ${order.table.name} has been updated.`, status: 'unread' });
-      }
-      }
+    // Check if the item is for the kitchen or bar and handle accordingly
+    if (orderItem.menuItem.destination === 'KITCHEN') {
+      await prisma.kitchenOrder.create({
+        data: { orderId: order.id, status: OrderStatus.PENDING }
+      });
+    } else if (orderItem.menuItem.destination === 'BAR') {
+      await prisma.barOrder.create({
+        data: { orderId: order.id, status: OrderStatus.PENDING }
+      });
+    }
 
-      return res.status(201).json(orderItem);
+    const BartenderUsers = await prisma.user.findMany({
+      where: { restaurantId: order.restaurant.id, role: { name: 'Bartender' } }
+    });
+
+    const KitchenUsers = await prisma.user.findMany({
+      where: { restaurantId: order.restaurant.id, role: { name: 'Kitchen Staff' } }
+    });
+
+    // ✅ Use table name/number if available, otherwise use order number
+    const orderLabel = order.table
+      ? `Table ${order.table.name || order.table.number}`
+      : `Order #${order.orderNumber}`;
+
+    const message = `The order of ${orderLabel} has been updated.`;
+
+    if (orderItem.menuItem.destination === 'KITCHEN') {
+      for (const user of KitchenUsers) {
+        await prisma.notification.create({
+          data: { userId: user.id, message, type: 'order', status: 'unread' }
+        });
+        if (user.socketId) io.to(user.socketId).emit('notification', { message, status: 'unread' });
+      }
+    } else {
+      for (const user of BartenderUsers) {
+        await prisma.notification.create({
+          data: { userId: user.id, message, type: 'order', status: 'unread' }
+        });
+        if (user.socketId) io.to(user.socketId).emit('notification', { message, status: 'unread' });
+      }
+    }
+
+    return res.status(201).json(orderItem);
   } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'An error occurred while adding the order item.' });
+    console.error('Error adding order item:', error);
+    return res.status(500).json({ error: 'An error occurred while adding the order item.' });
   }
 }
-
 
 async function requestPaymentByTable(req, res) {
   try {
@@ -883,13 +1306,14 @@ const generateBillForTableOrders = async (req, res) => {
         return res.status(404).json({ error: 'No orders found for the specified table' });
     }
 
+    if(orders[0].table){
     const table = await prisma.table.update({
       where:{id: orders[0].table.id},
       data:{
         status: TableStatus.AVAILABLE
       }
     })
-
+    }
     // Extract IDs for updating order statuses
     const kitchenOrderIds = orders.flatMap(order => order.kitchenOrders.map(kitchenOrder => kitchenOrder.id));
     const barOrderIds = orders.flatMap(order => order.barOrders.map(barOrder => barOrder.id));
@@ -987,6 +1411,162 @@ const generateBillForOrder = async (req, res) => {
   }
 };
 
+
+function getTodayRange() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+async function createOrderByNumber(req, res) {
+    try {
+        const { restaurantId, items } = req.body;
+        if (!restaurantId || !items || !items.length) {
+            return res.status(400).json({ error: 'Restaurant ID and items are required' });
+        }
+
+        const { start, end } = getTodayRange();
+
+        // Find last order for today
+        const lastOrder = await prisma.order.findFirst({
+            where: {
+                restaurantId,
+                createdAt: {
+                    gte: start,
+                    lte: end,
+                },
+            },
+            orderBy: { number: 'desc' },
+        });
+
+        // Determine next order number
+        const nextOrderNumber = lastOrder ? lastOrder.number + 1 : 1;
+
+        // Create new order
+        const order = await prisma.order.create({
+            data: {
+                // restaurantId,
+                number: nextOrderNumber,
+                status: OrderStatus.PENDING,
+                restaurant: {
+                  connect: { id: restaurantId }
+                },
+                items: {
+                    create: items.map(item => ({
+                        quantity: parseInt(item.quantity),
+                        specialInstructions: item.specialInstructions || '',
+                        menuItem: { connect: { id: item.menuItem.id } }
+                    }))
+                }
+            },
+            include: { items: { include: { menuItem: true } } }
+        });
+
+        // Notify kitchen/bar/waiters (same logic as before)
+        const kitchenUsers = await prisma.user.findMany({
+            where: { restaurantId, role: { name: 'Kitchen Staff' } }
+        });
+        const barUsers = await prisma.user.findMany({
+            where: { restaurantId, role: { name: 'Bartender' } }
+        });
+        const waiterUsers = await prisma.user.findMany({
+            where: { restaurantId, role: { name: 'Waiter' } }
+        });
+
+        for (const orderItem of order.items) {
+            if (orderItem.menuItem.destination === 'KITCHEN') {
+                await prisma.kitchenOrder.create({
+                    data: { orderId: order.id, status: OrderStatus.PENDING }
+                });
+                for (const user of kitchenUsers) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: user.id,
+                            message: `New order #${nextOrderNumber}: ${orderItem.menuItem.name}`,
+                            type: 'order',
+                            status: 'unread'
+                        }
+                    });
+                    io.to(user.socketId).emit('notification', { message: `New order #${nextOrderNumber}: ${orderItem.menuItem.name}` });
+                }
+            } else if (orderItem.menuItem.destination === 'BAR') {
+                await prisma.barOrder.create({
+                    data: { orderId: order.id, status: OrderStatus.PENDING }
+                });
+                for (const user of barUsers) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: user.id,
+                            message: `New drink order #${nextOrderNumber}: ${orderItem.menuItem.name}`,
+                            type: 'order',
+                            status: 'unread'
+                        }
+                    });
+                    io.to(user.socketId).emit('notification', { message: `New drink order #${nextOrderNumber}: ${orderItem.menuItem.name}` });
+                }
+            }
+        }
+
+        for (const user of waiterUsers) {
+            await prisma.notification.create({
+                data: {
+                    userId: user.id,
+                    message: `New order placed. #${nextOrderNumber}`,
+                    type: 'order',
+                    status: 'unread'
+                }
+            });
+            io.to(user.socketId).emit('notification', { message: `New order placed. #${nextOrderNumber}` });
+        }
+
+        return res.status(201).json(order);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Failed to create order by number.' });
+    }
+}
+
+
+async function getOrderByNumber(req, res) {
+    try {
+        const { restaurantId, number } = req.params;
+        if (!restaurantId || !number) {
+            return res.status(400).json({ error: 'Restaurant ID and order number are required' });
+        }
+
+        const { start, end } = getTodayRange();
+
+        const order = await prisma.order.findFirst({
+            where: {
+                restaurantId,
+                number: parseInt(number, 10),
+                createdAt: {
+                    gte: start,
+                    lte: end,
+                },
+            },
+            include: {
+                items: {
+                    include: {
+                        menuItem: true,
+                    },
+                },
+            },
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: `Order #${number} not found for today.` });
+        }
+
+        return res.status(200).json(order);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Failed to fetch order by number.' });
+    }
+}
+
 module.exports = {
     createOrder,
     getActiveOrdersByTableId,
@@ -999,5 +1579,7 @@ module.exports = {
     requestPaymentByTable, 
     generateBillForTableOrders,
     generateBillForOrder,
-    printBill
+    printBill,
+    createOrderByNumber,
+    getOrderByNumber
 };
