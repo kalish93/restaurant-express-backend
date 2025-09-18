@@ -20,6 +20,8 @@ router.post('/orders',  orderController.createOrder);
 router.get('/tables/:id',  tableController.getTable);
 router.post('/orders/:tableId/request-payment', orderController.requestPaymentByTable);
 router.post('/notifications/call-waiter', notificationController.createCallWaiterNotification);
+router.get('/orders/:restaurantId/:number',  orderController.getOrderByNumber);
+router.post('/order-by-number', orderController.createOrderByNumber);
 
 
 // Routes that require authentication
