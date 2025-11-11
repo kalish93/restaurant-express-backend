@@ -1,4 +1,4 @@
-require('dotenv').config();
+// require('dotenv').config();
 
 // const app = require("./src/app");
 // const prisma = require("./src/database");
@@ -22,6 +22,8 @@ const http = require('http');
 const app = require('./src/app');
 const io = require('./socketio'); // Ensure this path is correct
 const prisma = require('./src/database');
+
+console.log(process.env.DATABASE_URL);
 
 const PORT = process.env.PORT || 4000;
 

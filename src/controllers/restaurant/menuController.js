@@ -174,7 +174,7 @@ async function updateMenu(req, res) {
       }
   
       if (image && existingMenu.image) {
-        const oldImagePath = path.join(__dirname, '../../public/uploads', existingMenu.image);
+        const oldImagePath = path.join('/home/mesobfsj/media', existingMenu.image);
         fs.unlink(oldImagePath, (err) => {
           if (err) console.error("Error deleting old image:", err);
         });
@@ -249,7 +249,7 @@ async function deleteMenu(req, res) {
       }
 
       if (existingMenu.image) {
-        const imagePath = path.join(__dirname, '../../public/uploads/', existingMenu.image);
+        const imagePath = path.join('/home/mesobfsj/media', existingMenu.image);
         fs.unlink(imagePath, (err) => {
           if (err) console.error("Error deleting image:", err);
         });
