@@ -1,4 +1,4 @@
-const { TableStatus, OrderStatus } = require('@prisma/client');
+const { TableStatus, OrderStatus } = require('../../../prisma/app/generated/prisma/client');
 const prisma = require('../../database');
 const io = require('../../../socketio');
 
@@ -161,7 +161,7 @@ async function getActiveOrders(req, res) {
             whereClause.items = { some: { menuItem: { destination: 'KITCHEN' } } }; // Kitchen staff see only kitchen orders
         } else if (role.name === 'Bartender') {
             whereClause.items = { some: { menuItem: { destination: 'BAR' } } }; // Bar staff see only bar orders
-        } else if (role.name === 'Waiter' && role.name === 'Restaurant Manager') {
+        } else if (role.name === 'Waiter' || role.name === 'Restaurant Manager') {
             whereClause.status = { in: [OrderStatus.PENDING, OrderStatus.IN_PROGRESS, OrderStatus.READY, OrderStatus.SERVED, OrderStatus.PAYMENT_REQUESTED],}
         }
 
@@ -286,7 +286,7 @@ async function getOrderHistory(req, res) {
           barOrders: true,
         },
         orderBy: {
-          createdAt: 'asc', // Orders are retrieved in the order they were created
+          createdAt: 'desc', // Orders are retrieved in the order they were created
         },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -646,7 +646,7 @@ async function updateOrderStatus(req, res) {
         await prisma.barOrder.updateMany({ where: { orderId: id }, data: { status: newStatus } });
       }
 
-      if (orderToUpdate.table && [OrderStatus.SERVED, OrderStatus.CANCELLED, OrderStatus.PAID].includes(newStatus)) {
+      if (orderToUpdate.table && [OrderStatus.CANCELLED, OrderStatus.PAID].includes(newStatus)) {
         await prisma.table.update({
           where: { id: orderToUpdate.table.id },
           data: { status: TableStatus.AVAILABLE },
@@ -1567,6 +1567,99 @@ async function getOrderByNumber(req, res) {
     }
 }
 
+async function getDailyReport(req, res) {
+    try {
+        const { restaurantId, date } = req.query;
+
+        if (!restaurantId) {
+            return res.status(400).json({ error: "restaurantId is required" });
+        }
+
+        // Parse the date or default to today
+        const reportDate = date ? new Date(date) : new Date();
+
+        // Get the start and end of the day
+        const startOfDay = new Date(reportDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(reportDate.setHours(23, 59, 59, 999));
+
+        // Fetch orders created within the day for that restaurant
+        const orders = await prisma.order.findMany({
+            where: {
+                restaurantId: restaurantId,
+                createdAt: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                },
+                status: { not: "CANCELLED" } // optional: exclude cancelled orders
+            },
+            include: {
+                items: {
+                    include: {
+                        menuItem: true
+                    }
+                }
+            }
+        });
+
+        if (orders.length === 0) {
+            return res.status(200).json({
+                message: "No orders found for this date.",
+                report: {
+                    totalOrders: 0,
+                    totalItemsSold: 0,
+                    totalRevenue: 0,
+                    breakdown: []
+                }
+            });
+        }
+
+        // Aggregate totals
+        let totalOrders = orders.length;
+        let totalItemsSold = 0;
+        let totalRevenue = 0;
+        let itemSummary = {};
+
+        for (const order of orders) {
+            for (const orderItem of order.items) {
+                const menuItem = orderItem.menuItem;
+                const quantity = orderItem.quantity;
+                const price = menuItem.price ?? 0;
+
+                totalItemsSold += quantity;
+                totalRevenue += quantity * price;
+
+                if (!itemSummary[menuItem.name]) {
+                    itemSummary[menuItem.name] = {
+                        itemName: menuItem.name,
+                        quantitySold: 0,
+                        totalSales: 0
+                    };
+                }
+
+                itemSummary[menuItem.name].quantitySold += quantity;
+                itemSummary[menuItem.name].totalSales += quantity * price;
+            }
+        }
+
+        // Convert to array and sort by quantity sold
+        const breakdown = Object.values(itemSummary).sort(
+            (a, b) => b.quantitySold - a.quantitySold
+        );
+
+        return res.status(200).json({
+            reportDate: startOfDay.toISOString().split("T")[0],
+            restaurantId: parseInt(restaurantId),
+            totalOrders,
+            totalItemsSold,
+            totalRevenue,
+            breakdown
+        });
+    } catch (error) {
+        console.error("Error generating daily report:", error);
+        return res.status(500).json({ error: "Failed to generate daily report." });
+    }
+}
+
 module.exports = {
     createOrder,
     getActiveOrdersByTableId,
@@ -1581,5 +1674,6 @@ module.exports = {
     generateBillForOrder,
     printBill,
     createOrderByNumber,
-    getOrderByNumber
+    getOrderByNumber,
+    getDailyReport
 };

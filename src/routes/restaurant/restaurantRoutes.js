@@ -39,5 +39,6 @@ router.put('/restaurants/:id', upload.single('image'), (req, res) => {
 
 router.put('/restaurants/:id/status', restaurantController.setRestaurantOpenStatus);
 router.put('/restaurants/:id/active', restaurantController.setRestaurantActiveStatus);
+router.put('/restaurants/:id/appearance', restaurantController.updateAppearance);
 
 module.exports = router;

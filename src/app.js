@@ -20,19 +20,39 @@ const fs = require('fs');
 const path = require('path');
 
 // Define the path to the uploads directory
-const uploadsDir = path.join(__dirname, '/public/uploads');
-app.use('/api/uploads', express.static(path.join(__dirname, '/public/uploads')));
+// const uploadsDir = path.join(__dirname, '/public/uploads');
+// app.use('/api/uploads', express.static(path.join(__dirname, '/public/uploads')));
 
 
-// Create the directory if it doesn't exist
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// // Create the directory if it doesn't exist
+// if (!fs.existsSync(uploadsDir)) {
+//   fs.mkdirSync(uploadsDir, { recursive: true });
+// }
 const { json, urlencoded } = require("body-parser");
 
 // app.use(express.json());
-app.use(json({ limit: '10mb' }))
-app.use(urlencoded({ limit: '10mb', extended: true }))
+// app.use(json({ limit: '10mb' }))
+// app.use(urlencoded({ limit: '10mb', extended: true }))
+
+// ------------------- MEDIA FOLDER CONFIG ------------------- //
+// Define a media directory OUTSIDE your project folder
+// Adjust this path based on your hosting directory structure
+const mediaDir = "/home/mesobfsj/media"; // change username to your hosting username
+
+// Ensure directory exists
+if (!fs.existsSync(mediaDir)) {
+  fs.mkdirSync(mediaDir, { recursive: true });
+}
+
+// Serve media files publicly from this folder
+// When deployed with a subdomain, you can skip this and let the subdomain serve directly
+app.use("/api/uploads", express.static(mediaDir));
+// Example: https://api.mesobfoods.com/api/uploads/image.jpg
+
+// ------------------- MIDDLEWARE ------------------- //
+app.use(json({ limit: "10mb" }));
+app.use(urlencoded({ limit: "10mb", extended: true }));
+
 
 app.use("/api", userRoutes);
 app.use("/api", roleRoutes);
@@ -45,5 +65,11 @@ app.use("/api", orderRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api", dashboardRoutes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 
 module.exports = app;

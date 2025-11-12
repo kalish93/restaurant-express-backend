@@ -1,0 +1,251 @@
+// generator client {
+//   provider        = "prisma-client-js"
+//   binaryTargets = ["native"]  // Add this line
+// }
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "app/generated/prisma/client"
+  binaryTargets = ["native", "debian-openssl-1.1.x"] // include your server's runtime
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String      @unique
+  password     String
+  roleId       String      @map("role_id")
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId String?     @map("restaurant_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  socketId     String? // Add this line
+}
+
+model Role {
+  id              String           @id @default(uuid())
+  name            String
+  users           User[]
+  permissions     Permission[]
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  name            String
+  roles           Role[]
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+// New Models
+
+model Restaurant {
+  id                 String           @id @default(uuid())
+  name               String
+  phone              String?
+  address            String?
+  logo               String?
+  qrCodeImage        String? // Base64 or URL of the QR code image
+  subscription       SubscriptionType @default(BASIC)
+  subscriptionExpiry DateTime? // when the current plan expires
+  isOpen             Boolean          @default(true)
+  isActive           Boolean          @default(true)
+  menuItems          MenuItem[]
+  categories         Category[]
+  orders             Order[]
+  tables             Table[]
+  users              User[]
+
+  subscriptionPayments SubscriptionPayment[]
+
+  primaryColor   String?
+  secondaryColor String?
+  accentColor    String?
+  fontFamily     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model SubscriptionPayment {
+  id           String        @id @default(uuid())
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId String        @map("restaurant_id")
+  amount       Float
+  provider     String        @default("LAKIPAY")
+  reference    String        @unique
+  status       PaymentStatus @default(PENDING)
+  startDate    DateTime
+  endDate      DateTime
+  paymentDate  DateTime?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+}
+
+model MenuItem {
+  id           String          @id @default(uuid())
+  name         String
+  price        Float
+  ingredients  String?
+  image        String?
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId String          @map("restaurant_id")
+  category     Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId   String          @map("category_id")
+  orderItems   OrderItem[]
+  status       MenuItemStatus  @default(AVAILABLE)
+  destination  DestinationType @default(KITCHEN) // Specify where to send the item
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+}
+
+model Order {
+  id            String         @id @default(uuid())
+  status        OrderStatus
+  items         OrderItem[]
+  number        Int?
+  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId  String         @map("restaurant_id")
+  bills         Bill[] // Changed to one-to-many relationship
+  kitchenOrders KitchenOrder[]
+  barOrders     BarOrder[] // Added BarOrders relation
+  table         Table?         @relation(fields: [tableId], references: [id], onDelete: Cascade) // Relation to Table
+  tableId       String?        @map("table_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+}
+
+model OrderItem {
+  id                  String   @id @default(uuid())
+  quantity            Int
+  menuItem            MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId          String   @map("menu_item_id")
+  specialInstructions String?
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId             String   @map("order_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+}
+
+model Bill {
+  id                String   @id @default(uuid())
+  total             Float
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId           String   @map("order_id")
+  cashPaymentAmount Float?
+  provider          String?
+  transferAmount    Float?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+}
+
+model KitchenOrder {
+  id        String      @id @default(uuid())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String      @map("order_id")
+  status    OrderStatus
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+}
+
+model BarOrder {
+  id        String      @id @default(uuid())
+  status    OrderStatus
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String @map("order_id")
+}
+
+model Table {
+  id           String      @id @default(uuid())
+  number       String // Unique identifier for the table, like "Table 1"
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId String      @map("restaurant_id")
+  qrCodeImage  String // Base64 or URL of the QR code image
+  orders       Order[] // One-to-many relation to orders
+  status       TableStatus @default(AVAILABLE) // Status of the table
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+}
+
+// Updated Category Model (No direct association with Restaurant)
+model Category {
+  id           String      @id @default(uuid())
+  name         String
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId String?     @map("restaurant_id")
+  menuItems    MenuItem[]
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  type      String
+  status    String   @default("unread")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Consolidated OrderStatus Enum
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  READY
+  SERVED
+  CANCELLED
+  PAID
+  PAYMENT_REQUESTED
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+enum DestinationType {
+  KITCHEN
+  BAR
+}
+
+enum MenuItemStatus {
+  AVAILABLE
+  SOLD_OUT
+}
+
+enum SubscriptionType {
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}

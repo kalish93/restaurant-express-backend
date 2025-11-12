@@ -5,7 +5,7 @@ const menuController = require('../../controllers/restaurant/menuController');
 const orderController = require('../../controllers/restaurant/orderController');
 const tableController = require('../../controllers/restaurant/tableController');
 const notificationController = require('../../controllers/restaurant/notificationController');
-
+const upload = require('../../middlewares/multerConfig');
 const authenticate = require('../../middlewares/authenticate');
 
 const router = express.Router();
@@ -22,6 +22,7 @@ router.post('/orders/:tableId/request-payment', orderController.requestPaymentBy
 router.post('/notifications/call-waiter', notificationController.createCallWaiterNotification);
 router.get('/orders/:restaurantId/:number',  orderController.getOrderByNumber);
 router.post('/order-by-number', orderController.createOrderByNumber);
+router.post('/self-register-restaurant', upload.single('logo'), restaurantController.registerRestaurantWithUser);
 
 
 // Routes that require authentication
